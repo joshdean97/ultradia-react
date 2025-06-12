@@ -3,52 +3,43 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UltradianChart from '@/components/UltradianChart';
-
+import EnergyPotentialCard from '@/components/EnergyPotentialCard';
 
 export default function UltradianPage() {
   const router = useRouter();
   const [cycles, setCycles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchCycles = async () => {
       try {
-        // First, get the user profile (for durations)
-        const userRes = await fetch("http://localhost:5000/api/users/me", {
-          credentials: "include",
+        const userRes = await fetch('http://localhost:5000/api/users/me', {
+          credentials: 'include',
         });
 
         if (!userRes.ok) {
-          router.push("/login");
+          router.push('/login');
           return;
         }
 
         const user = await userRes.json();
-
-        // Get today's record to grab wake_time
-        const today = new Date().toISOString().split("T")[0];
-
-        // You’ll later replace this with a dedicated `/api/records/today` endpoint
-        const wakeTime = sessionStorage.getItem("wake_time");
+        const wakeTime = sessionStorage.getItem('wake_time');
         if (!wakeTime) {
-          router.push("/log");
+          router.push('/log');
           return;
         }
 
-        const body = {
-          wake_time: wakeTime,
-          peak: user.peak_duration,
-          trough: user.trough_duration,
-          cycles: user.cycles_count,
-          grog: user.grog_duration,
-        };
+        const today = new Date();
+        const params = new URLSearchParams({
+          y: today.getFullYear().toString(),
+          m: (today.getMonth() + 1).toString(),
+          d: today.getDate().toString(),
+        });
 
-        const res = await fetch("http://localhost:5000/api/ultradian/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(body),
+        const res = await fetch(`http://localhost:5000/api/ultradian/?${params.toString()}`, {
+          method: 'GET',
+          credentials: 'include',
         });
 
         const data = await res.json();
@@ -56,10 +47,10 @@ export default function UltradianPage() {
         if (res.ok) {
           setCycles(data.cycles);
         } else {
-          setError(data.message || "Failed to generate cycles");
+          setError(data.message || 'Failed to generate cycles');
         }
       } catch (err) {
-        setError("Something went wrong");
+        setError('Something went wrong');
       } finally {
         setLoading(false);
       }
@@ -72,10 +63,14 @@ export default function UltradianPage() {
     <main className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto bg-white p-6 rounded shadow">
         <h1 className="text-2xl font-bold mb-4 text-blue-600">Ultradian Rhythm</h1>
-  
+
+        <div className="mb-6">
+          <EnergyPotentialCard />
+        </div>
+
         {loading && <p>Loading...</p>}
         {error && <p className="text-red-600">{error}</p>}
-  
+
         {!loading && !error && (
           <>
             <UltradianChart data={cycles} />
@@ -92,9 +87,18 @@ export default function UltradianPage() {
                 </div>
               ))}
             </div>
+
+            <div className="mt-8 text-center">
+              <button
+                onClick={() => router.push('/history')}
+                className="text-blue-600 hover:underline text-sm"
+              >
+                View Daily Record History →
+              </button>
+            </div>
           </>
         )}
       </div>
     </main>
   );
-  }
+}

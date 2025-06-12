@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -8,6 +8,25 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/users/me', {
+          credentials: 'include',
+        });
+        if (res.ok) {
+          router.push('/log');
+        }
+      } catch (err) {
+        // no active session, allow login
+      } finally {
+        setCheckingSession(false);
+      }
+    };
+    checkSession();
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +42,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
-        router.push('/log'); // Go to LogRecord page after successful login
+        router.push('/log');
       } else {
         setError(data.error || 'Login failed');
       }
@@ -31,6 +50,8 @@ export default function LoginPage() {
       setError('Something went wrong');
     }
   };
+
+  if (checkingSession) return null;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
@@ -81,7 +102,10 @@ export default function LoginPage() {
         </form>
 
         <p className="text-sm text-center text-gray-600">
-          Don’t have an account? <a href="/register" className="text-blue-500 hover:underline">Register</a>
+          Don’t have an account?{' '}
+          <a href="/register" className="text-blue-500 hover:underline">
+            Register
+          </a>
         </p>
       </div>
     </main>

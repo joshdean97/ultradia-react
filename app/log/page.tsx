@@ -13,23 +13,34 @@ export default function LogRecordPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch('http://localhost:5000/api/records/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const todayRes = await fetch('http://localhost:5000/api/records/today/', {
         credentials: 'include',
-        body: JSON.stringify({ wake_time: wakeTime, hrv: parseFloat(hrv) }),
       });
 
-      const data = await res.json();
+      const body = {
+        wake_time: wakeTime,
+        hrv: parseFloat(hrv),
+      };
 
-      if (res.ok) {
-        // 🔐 Store wake_time temporarily for use in /ultradian
-        sessionStorage.setItem('wake_time', wakeTime);
-
-        router.push('/ultradian');
+      if (todayRes.ok) {
+        const existing = await todayRes.json();
+        await fetch(`http://localhost:5000/api/records/${existing.id}/`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
       } else {
-        setError(data.error || 'Failed to log record');
+        await fetch('http://localhost:5000/api/records/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
       }
+
+      sessionStorage.setItem('wake_time', wakeTime);
+      router.push('/ultradian');
     } catch (err) {
       setError('Something went wrong');
     }
@@ -54,7 +65,7 @@ export default function LogRecordPage() {
             <input
               type="time"
               id="wake-time"
-              className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={wakeTime}
               onChange={(e) => setWakeTime(e.target.value)}
               required
@@ -68,7 +79,7 @@ export default function LogRecordPage() {
             <input
               type="number"
               id="hrv"
-              className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={hrv}
               onChange={(e) => setHrv(e.target.value)}
               step="0.1"
