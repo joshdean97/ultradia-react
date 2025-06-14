@@ -86,6 +86,9 @@ The frontend currently assumes API routes like `http://localhost:5000/api/...`. 
 - [ ] Improve mobile responsiveness
 - [ ] Add light/dark mode
 
+## API repo
+[https://github.com/joshdean97/ultradia](Ultradia API)
+
 ## 📄 License
 
 MIT — feel free to use, modify, and contribute.
