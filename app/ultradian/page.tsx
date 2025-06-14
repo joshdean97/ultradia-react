@@ -24,13 +24,23 @@ export default function UltradianPage() {
         }
 
         const user = await userRes.json();
-        const wakeTime = sessionStorage.getItem('wake_time');
-        if (!wakeTime) {
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = today.getMonth() + 1;
+        const d = today.getDate();
+        
+        const recordRes = await fetch(`http://localhost:5000/api/records/today?y=${y}&m=${m}&d=${d}`, {
+          credentials: 'include',
+        });
+        
+        if (!recordRes.ok) {
           router.push('/log');
           return;
         }
-
-        const today = new Date();
+        
+        const recordData = await recordRes.json();
+        const wakeTime = recordData.wake_time; // optionally store it in sessionStorage if you want
+        
         const params = new URLSearchParams({
           y: today.getFullYear().toString(),
           m: (today.getMonth() + 1).toString(),

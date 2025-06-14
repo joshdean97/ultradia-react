@@ -17,10 +17,23 @@ export default function LoginPage() {
           credentials: 'include',
         });
         if (res.ok) {
-          router.push('/log');
+          const today = new Date();
+          const y = today.getFullYear();
+          const m = today.getMonth() + 1;
+          const d = today.getDate();
+
+          const r = await fetch(`http://localhost:5000/api/records/`, {
+            credentials: 'include',
+          });
+
+          if (r.ok) {
+            router.push('/ultradian');
+          } else {
+            router.push('/log');
+          }
         }
       } catch (err) {
-        // no active session, allow login
+        // No active session, stay on login
       } finally {
         setCheckingSession(false);
       }
@@ -42,7 +55,20 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
-        router.push('/log');
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = today.getMonth() + 1;
+        const d = today.getDate();
+
+        const r = await fetch(`http://localhost:5000/api/records/today/`, {
+          credentials: 'include',
+        });
+
+        if (r.ok) {
+          router.push('/ultradian');
+        } else {
+          router.push('/log');
+        }
       } else {
         setError(data.error || 'Login failed');
       }

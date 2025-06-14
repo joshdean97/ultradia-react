@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# UltraDia — Frontend
 
-## Getting Started
+UltraDia is a personalized rhythm tracker that helps users align their work and rest with their natural ultradian cycles. This React-based frontend interfaces with the UltraDia backend to provide a seamless experience for logging data, visualizing cycles, and managing energy for peak performance.
 
-First, run the development server:
+## 🚀 Features
+
+- 🌅 Log your **wake time** and **HRV** each day
+- 🔁 Generate personalized **ultradian rhythm cycles**
+- 📊 View cycles visually using **ECharts**
+- 🔋 Get dynamic **Energy Potential insights**
+- 👤 Customize preferences (cycle count, durations, grog state)
+- 🔐 Auth system with login, register, and logout
+- 🧭 Navigation bar with routing to all key pages
+
+## 🛠️ Tech Stack
+
+- **React 18**
+- **Next.js 13+ (App Router)**
+- **TypeScript**
+- **Tailwind CSS**
+- **ECharts** (for visualizing cycles)
+- **REST API** (connected to a Flask backend)
+
+## 📂 Project Structure
+
+```
+/components
+  ├── EnergyPotentialCard.tsx
+  ├── Navbar.tsx
+  └── UltradianChart.tsx
+
+/app
+  ├── login/page.tsx
+  ├── register/page.tsx
+  ├── log/page.tsx
+  ├── profile/page.tsx
+  └── ultradian/page.tsx
+```
+
+## 🔧 Getting Started
+
+### 1. Install Dependencies
+
+```bash
+npm install
+# or
+yarn install
+```
+
+### 2. Run Development Server
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs on [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> ⚠️ Make sure your backend API is running on `http://localhost:5000`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Environment Variables
 
-## Learn More
+The frontend currently assumes API routes like `http://localhost:5000/api/...`. You can customize this using environment variables in future refactors.
 
-To learn more about Next.js, take a look at the following resources:
+## 🧪 Pages Overview
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Route        | Description                        |
+|--------------|------------------------------------|
+| `/login`     | Login form with cookie-based auth  |
+| `/register`  | Register a new account             |
+| `/log`       | Log daily wake time and HRV        |
+| `/ultradian` | View today's cycles and energy     |
+| `/profile`   | Adjust preferences (cycle length etc.) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🧱 Components
 
-## Deploy on Vercel
+- **`EnergyPotentialCard`**: Interprets your HRV and offers advice
+- **`UltradianChart`**: Visualizes peak/trough times using ECharts
+- **`Navbar`**: Persistent navigation with dynamic user name and logout
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## ✅ To Do
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [ ] Add form validation feedback
+- [ ] Add support for environment-based API URL
+- [ ] Improve mobile responsiveness
+- [ ] Add light/dark mode
+
+## 📄 License
+
+MIT — feel free to use, modify, and contribute.
