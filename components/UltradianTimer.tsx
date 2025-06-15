@@ -73,7 +73,7 @@ export default function UltradianTimer({
   }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount]);
 
   return (
-    <div className={`rounded-xl shadow text-center p-8 transition-all ${bgColor}`}>
+    <div className={`rounded-xl sm:rounded-2xl shadow text-center p-8 transition-all ${bgColor}`}>
       <h2 className="text-3xl font-bold mb-2">
         {stage === 'peak' && '🔶 Peak Focus'}
         {stage === 'trough' && '🔷 Trough Recovery'}
