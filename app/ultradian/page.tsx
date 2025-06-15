@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UltradianChart from '@/components/UltradianChart';
+import UltradianTimer from '@/components/UltradianTimer';
 import EnergyPotentialCard from '@/components/EnergyPotentialCard';
 
 export default function UltradianPage() {
@@ -10,6 +11,9 @@ export default function UltradianPage() {
   const [cycles, setCycles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [wakeTime, setWakeTime] = useState('');
+  const [user, setUser] = useState<any>(null); // you'll need this for the timer props
+
 
   useEffect(() => {
     const fetchCycles = async () => {
@@ -18,12 +22,22 @@ export default function UltradianPage() {
           credentials: 'include',
         });
 
+        const user = await userRes.json();
+        setUser(user); // so you can access it later
+
+        const wakeTimeStored = sessionStorage.getItem('wake_time');
+        if (!wakeTimeStored) {
+          router.push('/log');
+          return;
+        }
+        setWakeTime(wakeTimeStored);
+
+
         if (!userRes.ok) {
           router.push('/login');
           return;
         }
 
-        const user = await userRes.json();
         const today = new Date();
         const y = today.getFullYear();
         const m = today.getMonth() + 1;
@@ -83,7 +97,13 @@ export default function UltradianPage() {
 
         {!loading && !error && (
           <>
-            <UltradianChart data={cycles} />
+            <UltradianTimer
+                wakeTime={wakeTime}
+                peakDuration={user.peak_duration}
+                troughDuration={user.trough_duration}
+                grogDuration={user.grog_duration}
+                cyclesCount={user.cycles_count}
+/>
             <div className="space-y-4 mt-6">
               {cycles.map((cycle: any, i) => (
                 <div key={i} className="p-4 border rounded bg-white shadow-sm">
