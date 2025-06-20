@@ -16,7 +16,7 @@ export default function HistoryPage() {
   useEffect(() => {
     const fetchRecords = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/records/', {
+        const res = await fetch('http://localhost:5000/records/', {
           credentials: 'include',
         });
 

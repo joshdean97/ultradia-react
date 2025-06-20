@@ -22,7 +22,7 @@ export default function Navbar() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/users/me', {
+        const res = await fetch('http://localhost:5000/users/me', {
           credentials: 'include',
         });
 
@@ -39,7 +39,7 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = async () => {
-    await fetch('http://localhost:5000/api/auth/logout', {
+    await fetch('http://localhost:5000/auth/logout', {
       method: 'POST',
       credentials: 'include',
     });

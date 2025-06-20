@@ -1,8 +1,18 @@
-'use client';
+// UltradianTimer.tsx
+"use client";
 
 import { useEffect, useState } from 'react';
 
 type Phase = 'grog' | 'peak' | 'trough' | 'complete';
+
+type Props = {
+  wakeTime: string;
+  peakDuration: number;
+  troughDuration: number;
+  grogDuration: number;
+  cyclesCount: number;
+  onStageChange?: (stage: Phase) => void;
+};
 
 export default function UltradianTimer({
   wakeTime,
@@ -10,13 +20,8 @@ export default function UltradianTimer({
   troughDuration,
   grogDuration,
   cyclesCount,
-}: {
-  wakeTime: string;
-  peakDuration: number;
-  troughDuration: number;
-  grogDuration: number;
-  cyclesCount: number;
-}) {
+  onStageChange,
+}: Props) {
   const [stage, setStage] = useState<Phase>('grog');
   const [timeLeft, setTimeLeft] = useState('00:00');
   const [bgColor, setBgColor] = useState('bg-gray-200');
@@ -49,6 +54,7 @@ export default function UltradianTimer({
           const seconds = String(remainingSec % 60).padStart(2, '0');
           setTimeLeft(`${minutes}:${seconds}`);
           setStage(seg.type);
+          onStageChange?.(seg.type);
 
           setBgColor(
             seg.type === 'peak' ? 'bg-green-500 text-white' :
@@ -61,16 +67,16 @@ export default function UltradianTimer({
         total = segEnd;
       }
 
-      // If no segment matched, cycle is complete
       setStage('complete');
+      onStageChange?.('complete');
       setTimeLeft('');
       setBgColor('bg-green-200');
     };
 
-    tick(); // initial call
+    tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount]);
+  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount, onStageChange]);
 
   return (
     <div className={`rounded-xl sm:rounded-2xl shadow text-center p-8 transition-all ${bgColor}`}>

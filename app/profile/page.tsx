@@ -19,7 +19,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const res = await fetch('http://localhost:5000/api/users/me', {
+      const res = await fetch('http://localhost:5000/users/me', {
         credentials: 'include',
       });
       if (res.ok) {
@@ -50,7 +50,7 @@ export default function ProfilePage() {
     e.preventDefault();
     if (!userId) return;
 
-    const res = await fetch(`http://localhost:5000/api/users/${userId}/`, {
+    const res = await fetch(`http://localhost:5000/users/${userId}/`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -82,7 +82,7 @@ export default function ProfilePage() {
     const confirmed = confirm('Are you sure you want to delete your account? This cannot be undone.');
     if (!confirmed) return;
 
-    const res = await fetch(`http://localhost:5000/api/users/${userId}`, {
+    const res = await fetch(`http://localhost:5000/users/${userId}`, {
       method: 'DELETE',
       credentials: 'include',
     });

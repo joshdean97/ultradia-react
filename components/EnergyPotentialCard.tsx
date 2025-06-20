@@ -32,7 +32,7 @@ export default function EnergyPotentialCard() {
   useEffect(() => {
     const fetchEnergyPotential = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/energy-potential/", {
+        const res = await fetch("http://localhost:5000/energy-potential/", {
           method: "GET",
           credentials: "include",
         });

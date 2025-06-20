@@ -13,7 +13,7 @@ export default function LoginPage() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/users/me', {
+        const res = await fetch('http://localhost:5000/users/me', {
           credentials: 'include',
         });
         if (res.ok) {
@@ -22,7 +22,7 @@ export default function LoginPage() {
           const m = today.getMonth() + 1;
           const d = today.getDate();
 
-          const r = await fetch(`http://localhost:5000/api/records/`, {
+          const r = await fetch(`http://localhost:5000/records/`, {
             credentials: 'include',
           });
 
@@ -45,7 +45,7 @@ export default function LoginPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch('http://localhost:5000/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -60,7 +60,7 @@ export default function LoginPage() {
         const m = today.getMonth() + 1;
         const d = today.getDate();
 
-        const r = await fetch(`http://localhost:5000/api/records/today/`, {
+        const r = await fetch(`http://localhost:5000/records/today/`, {
           credentials: 'include',
         });
 
