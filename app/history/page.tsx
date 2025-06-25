@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
+import FocusStreakOverview from '@/components/FocusStreakOverview';
+
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -93,7 +95,7 @@ export default function HistoryPage() {
     <main className="min-h-screen bg-gray-50 px-4 py-6">
       <div className="max-w-3xl mx-auto bg-white p-6 rounded shadow">
         <h1 className="text-2xl font-bold mb-4 text-blue-600">📅 Daily Record History</h1>
-
+        <FocusStreakOverview />
         {loading ? (
           <p className="text-gray-600">Loading records...</p>
         ) : error ? (
