@@ -10,7 +10,7 @@ export default function VibeScoreCard() {
   const [penalties, setPenalties] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [celebrated, setCelebrated] = useState(false); // prevent rerun
+  const [celebrated, setCelebrated] = useState(false);
 
   useEffect(() => {
     const fetchVibeScore = async () => {
@@ -30,13 +30,8 @@ export default function VibeScoreCard() {
         setPrompt(data.prompt);
         setPenalties(data.penalties || []);
 
-        // 🎉 Trigger confetti if score is high
         if (data.score > 90 && !celebrated) {
-          confetti({
-            particleCount: 150,
-            spread: 90,
-            origin: { y: 0.6 },
-          });
+          confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
           setCelebrated(true);
         }
       } catch (err: any) {
@@ -79,21 +74,20 @@ export default function VibeScoreCard() {
       ) : (
         <>
           <p className={`text-5xl font-extrabold ${zoneColor}`}>{score}</p>
-          <p
-            className={`text-sm font-semibold ${zoneColor}`}
-            title={zoneTooltip}
-          >
+          <p className={`text-sm font-semibold ${zoneColor}`} title={zoneTooltip}>
             Zone: {zone}
           </p>
 
           <p className="text-blue-700 text-sm font-medium leading-snug">{prompt}</p>
 
           {penalties.length > 0 && (
-            <div className="pt-2 border-t border-gray-200">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center justify-center gap-1">
-                ⚠️ Factors Affecting Your Vibe
-              </h3>
-              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 text-left mx-auto w-fit">
+            <div className="pt-4 border-t border-gray-200 space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-sm text-gray-500 font-semibold uppercase tracking-wide">
+                  ⚠️ Factors Affecting Your Vibe
+                </span>
+              </div>
+            <ul className="text-sm text-gray-600 space-y-1 list-disc list-outside pl-5 inline-block text-left">
                 {penalties.map((p, i) => (
                   <li key={i}>{p}</li>
                 ))}

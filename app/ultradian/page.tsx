@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UltradianTimer from '@/components/UltradianTimer';
-import EnergyPotentialCard from '@/components/EnergyPotentialCard';
 import CircadianPromptCard from '@/components/CircadianPromptCard';
 import { motion, AnimatePresence } from 'framer-motion';
+import VibeScoreCard from '@/components/VibeScoreCard';
 
 export default function UltradianPage() {
   const router = useRouter();
-  const [cycles, setCycles] = useState([]);
+  const [cycles, setCycles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [wakeTime, setWakeTime] = useState('');
@@ -24,8 +24,8 @@ export default function UltradianPage() {
         const userRes = await fetch('http://localhost:5000/users/me', {
           credentials: 'include',
         });
-        const user = await userRes.json();
-        setUser(user);
+        const userData = await userRes.json();
+        setUser(userData);
 
         const wakeTimeStored = sessionStorage.getItem('wake_time');
         if (!wakeTimeStored) {
@@ -57,6 +57,7 @@ export default function UltradianPage() {
           setError(data.message || 'Failed to generate cycles');
         }
 
+        // Optional: vital index for CircadianPromptCard
         const energyRes = await fetch('http://localhost:5000/energy-potential/', {
           credentials: 'include',
         });
@@ -77,7 +78,7 @@ export default function UltradianPage() {
       <div className="max-w-3xl mx-auto bg-white px-6 py-10 rounded-2xl shadow-md space-y-10">
         <h1 className="text-3xl font-bold text-center text-blue-600">Ultradian Rhythm</h1>
 
-        <EnergyPotentialCard />
+        <VibeScoreCard />
 
         {loading && <p className="text-center text-gray-500">Loading...</p>}
         {error && <p className="text-center text-red-600">{error}</p>}
@@ -88,8 +89,8 @@ export default function UltradianPage() {
               wakeTime={wakeTime}
               peakDuration={user.peak_duration}
               troughDuration={user.trough_duration}
-              grogDuration={user.grog_duration}
-              cyclesCount={user.cycles_count}
+              grogDuration={user.morning_grog}
+              cyclesCount={user.cycles}
               onStageChange={setCurrentStage}
             />
 

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import React from 'react';
 import FocusStreakOverview from '@/components/FocusStreakOverview';
 
-
 export default function HistoryPage() {
   const router = useRouter();
   const [records, setRecords] = useState<any[]>([]);
@@ -31,7 +30,6 @@ export default function HistoryPage() {
 
         setRecords(sortedRecords);
 
-        // Calculate baseline from all but the most recent entry
         if (sortedRecords.length > 1) {
           const recent = sortedRecords.slice(1, 8).map((r: any) => r.hrv).filter((h: any) => h != null);
           const baseline = recent.reduce((acc, h) => acc + h, 0) / recent.length;
@@ -47,11 +45,21 @@ export default function HistoryPage() {
     fetchRecords();
   }, []);
 
-  const goToUltradian = (record: any) => {
+  const goToUltradian = async (record: any) => {
     const date = new Date(record.date);
     const y = date.getFullYear();
     const m = date.getMonth() + 1;
     const d = date.getDate();
+
+    // Optional check before navigating
+    const res = await fetch(`http://localhost:5000/ultradian/?y=${y}&m=${m}&d=${d}`, {
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      alert('No ultradian data exists for this date.');
+      return;
+    }
 
     sessionStorage.setItem('wake_time', record.wake_time);
     router.push(`/ultradian?y=${y}&m=${m}&d=${d}`);
@@ -76,7 +84,6 @@ export default function HistoryPage() {
 
   function getHRVColor(hrv: number) {
     if (baselineHRV === null) return 'text-gray-600';
-
     const index = (hrv / baselineHRV) * 100;
     if (index > 110) return 'text-green-600 font-semibold';
     if (index >= 90) return 'text-yellow-600 font-medium';
@@ -96,6 +103,7 @@ export default function HistoryPage() {
       <div className="max-w-3xl mx-auto bg-white p-6 rounded shadow">
         <h1 className="text-2xl font-bold mb-4 text-blue-600">📅 Daily Record History</h1>
         <FocusStreakOverview />
+
         {loading ? (
           <p className="text-gray-600">Loading records...</p>
         ) : error ? (
@@ -112,40 +120,48 @@ export default function HistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {groupedByMonth(currentRecords).map(([month, records]) => (
-                  <React.Fragment key={month}>
-                    <tr className="bg-gray-200">
-                      <td colSpan={4} className="py-2 px-3 font-semibold text-gray-700">
-                        {month}
-                      </td>
-                    </tr>
-                    {records.map((r: any, idx: number) => (
-                      <tr
-                        key={r.date + idx}
-                        className={`border-b border-gray-200 ${
-                          idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                        } hover:bg-blue-50 transition`}
-                      >
-                        <td className="py-2 px-3 text-gray-800">{r.date}</td>
-                        <td className="py-2 px-3 text-gray-800">{r.wake_time}</td>
-                        <td
-                          className={`py-2 px-3 ${getHRVColor(r.hrv)}`}
-                          title={getHRVTooltip(r.hrv)}
-                        >
-                          {r.hrv}
-                        </td>
-                        <td className="py-2 px-3">
-                          <button
-                            onClick={() => goToUltradian(r)}
-                            className="text-sm font-medium text-blue-600 hover:underline hover:text-blue-800"
-                          >
-                            View
-                          </button>
+                {currentRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-4 text-center text-gray-500">
+                      No records found.
+                    </td>
+                  </tr>
+                ) : (
+                  groupedByMonth(currentRecords).map(([month, records]) => (
+                    <React.Fragment key={month}>
+                      <tr className="bg-gray-200">
+                        <td colSpan={4} className="py-2 px-3 font-semibold text-gray-700">
+                          {month}
                         </td>
                       </tr>
-                    ))}
-                  </React.Fragment>
-                ))}
+                      {records.map((r: any, idx: number) => (
+                        <tr
+                          key={r.date + idx}
+                          className={`border-b border-gray-200 ${
+                            idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                          } hover:bg-blue-50 transition`}
+                        >
+                          <td className="py-2 px-3 text-gray-800">{r.date}</td>
+                          <td className="py-2 px-3 text-gray-800">{r.wake_time}</td>
+                          <td
+                            className={`py-2 px-3 ${getHRVColor(r.hrv)}`}
+                            title={getHRVTooltip(r.hrv)}
+                          >
+                            {r.hrv}
+                          </td>
+                          <td className="py-2 px-3">
+                            <button
+                              onClick={() => goToUltradian(r)}
+                              className="text-sm font-medium text-blue-600 hover:underline hover:text-blue-800"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  ))
+                )}
               </tbody>
             </table>
 
