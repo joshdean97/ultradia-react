@@ -89,8 +89,8 @@ export default function UltradianPage() {
               wakeTime={wakeTime}
               peakDuration={user.peak_duration}
               troughDuration={user.trough_duration}
-              grogDuration={user.morning_grog}
-              cyclesCount={user.cycles}
+              grogDuration={user.grog_duration}
+              cyclesCount={user.cycles_count}
               onStageChange={setCurrentStage}
             />
 

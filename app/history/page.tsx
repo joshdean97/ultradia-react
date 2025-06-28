@@ -17,12 +17,29 @@ export default function HistoryPage() {
   useEffect(() => {
     const fetchRecords = async () => {
       try {
-        const res = await fetch('http://localhost:5000/records/', {
+        const res = await fetch('http://localhost:5000/records/all', {
           credentials: 'include',
         });
 
         const data = await res.json();
-        const rawRecords = Array.isArray(data) ? data : data.records;
+        console.log("Fetched record data:", data);
+
+        const rawRecords = Array.isArray(data)
+  ? data
+  : Array.isArray(data.records)
+    ? data.records
+    : [];
+
+if (!Array.isArray(rawRecords)) {
+  console.warn("❌ records is not an array:", rawRecords);
+  setRecords([]);
+  return;
+}
+
+
+        if (rawRecords.length === 0) {
+          console.warn("⚠️ No records returned from /records/");
+        }
 
         const sortedRecords = (rawRecords || []).sort(
           (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -51,7 +68,6 @@ export default function HistoryPage() {
     const m = date.getMonth() + 1;
     const d = date.getDate();
 
-    // Optional check before navigating
     const res = await fetch(`http://localhost:5000/ultradian/?y=${y}&m=${m}&d=${d}`, {
       credentials: 'include',
     });
@@ -71,14 +87,12 @@ export default function HistoryPage() {
 
   function groupedByMonth(records: any[]) {
     const groups: Record<string, any[]> = {};
-
     for (const record of records) {
       const d = new Date(record.date);
       const monthKey = d.toLocaleString('default', { month: 'long', year: 'numeric' });
       if (!groups[monthKey]) groups[monthKey] = [];
       groups[monthKey].push(record);
     }
-
     return Object.entries(groups);
   }
 
@@ -120,7 +134,7 @@ export default function HistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {currentRecords.length === 0 ? (
+                {!loading && currentRecords.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="py-4 text-center text-gray-500">
                       No records found.

@@ -1,197 +1,124 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import confetti from 'canvas-confetti';
-import html2canvas from 'html2canvas';
-import ShareableCard from './ShareableCard';
+import { useEffect, useState } from 'react';
+
+type Block = {
+  date: string;
+  hasData: boolean;
+};
 
 export default function FocusStreakOverview() {
-  const [blocks, setBlocks] = useState<{ date: string; count: number }[]>([]);
+  const [blocks, setBlocks] = useState<Block[]>([]);
   const [loading, setLoading] = useState(true);
-  const hasCelebrated = useRef(false);
-  const hiddenRef = useRef<HTMLDivElement>(null);
-
-  const [metrics, setMetrics] = useState({
-    thisWeek: [] as { date: string; count: number }[],
-    lastWeek: [] as { date: string; count: number }[],
-    streak: 0,
-    longest: 0,
-    isNewRecord: false,
-    totalThisWeek: 0,
-    delta: 0,
-  });
+  const [error, setError] = useState('');
+  const [weeklyCount, setWeeklyCount] = useState(0);
+  const [weeklyDelta, setWeeklyDelta] = useState(0);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
 
   useEffect(() => {
-    const fetchFocusBlocks = async () => {
-      const today = new Date();
-      const results: { date: string; count: number }[] = [];
+    const today = new Date();
 
-      for (let i = 13; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - i);
-        const y = date.getFullYear();
-        const m = date.getMonth() + 1;
-        const d = date.getDate();
+    const fetchBlockStatus = async () => {
+      try {
+        const days = Array.from({ length: 14 }).map((_, i) => {
+          const d = new Date(today);
+          d.setDate(today.getDate() - i);
+          return d;
+        });
 
-        try {
-          const res = await fetch(`http://localhost:5000/ultradian/?y=${y}&m=${m}&d=${d}`, {
-            credentials: 'include',
-          });
-          const data = await res.json();
+        const results: Block[] = [];
 
-          results.push({
-            date: date.toISOString().split('T')[0],
-            count: res.ok
-              ? data.cycles?.filter((c: any) => c.peak_start && c.peak_end).length || 0
-              : 0,
-          });
-        } catch {
-          results.push({ date: date.toISOString().split('T')[0], count: 0 });
+        for (const day of days) {
+          const y = day.getFullYear();
+          const m = day.getMonth() + 1;
+          const d = day.getDate();
+          const dateStr = day.toISOString().slice(0, 10);
+
+          try {
+            const res = await fetch(`http://localhost:5000/ultradian/?y=${y}&m=${m}&d=${d}`, {
+              credentials: 'include',
+            });
+
+            if (res.status === 200) {
+              results.push({ date: dateStr, hasData: true });
+            } else {
+              results.push({ date: dateStr, hasData: false });
+            }
+          } catch {
+            results.push({ date: dateStr, hasData: false });
+          }
         }
-      }
 
-      setBlocks(results);
-      setLoading(false);
+        setBlocks(results.slice(0, 7).reverse());
+        const lastWeek = results.slice(7, 14);
 
-      const thisWeek = results.slice(7);
-      const lastWeek = results.slice(0, 7);
+        const thisWeekCount = results.slice(0, 7).filter(b => b.hasData).length;
+        const lastWeekCount = lastWeek.filter(b => b.hasData).length;
 
-      const totalThisWeek = thisWeek.reduce((acc, b) => acc + b.count, 0);
-      const totalLastWeek = lastWeek.reduce((acc, b) => acc + b.count, 0);
-      const delta = totalThisWeek - totalLastWeek;
+        setWeeklyCount(thisWeekCount);
+        setWeeklyDelta(thisWeekCount - lastWeekCount);
 
-      // ✅ Longest streak: oldest to newest across full 14 days
-      let longest = 0;
-      let temp = 0;
-      for (const b of results) {
-        if (b.count > 0) {
-          temp++;
-          if (temp > longest) longest = temp;
-        } else {
-          temp = 0;
+        const allDays = results.reverse();
+        let current = 0;
+        let max = 0;
+        let temp = 0;
+
+        for (const block of allDays) {
+          if (block.hasData) {
+            temp += 1;
+            if (temp > max) max = temp;
+          } else {
+            if (current === 0) current = temp;
+            temp = 0;
+          }
         }
-      }
 
-      // ✅ Current streak: most recent 7 days, newest to oldest
-      let current = 0;
-      for (let i = results.length - 1; i >= results.length - 7; i--) {
-        if (results[i].count > 0) current++;
-        else break;
+        setCurrentStreak(current === 0 ? temp : current);
+        setLongestStreak(max);
+      } catch (err: any) {
+        setError(err.message || 'Something went wrong');
+      } finally {
+        setLoading(false);
       }
-
-      setMetrics({
-        thisWeek,
-        lastWeek,
-        streak: current,
-        longest,
-        isNewRecord: current > longest,
-        totalThisWeek,
-        delta,
-      });
     };
 
-    fetchFocusBlocks();
+    fetchBlockStatus();
   }, []);
 
-  useEffect(() => {
-    if (metrics.isNewRecord && !hasCelebrated.current) {
-      confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
-      hasCelebrated.current = true;
-    }
-  }, [metrics.isNewRecord]);
-
-  const handleSaveImage = async () => {
-    if (!hiddenRef.current) return;
-    const canvas = await html2canvas(hiddenRef.current, {
-      backgroundColor: '#ffffff',
-      useCORS: true,
-    });
-    const link = document.createElement('a');
-    link.download = `ultradia-streak-${new Date().toISOString().split('T')[0]}.png`;
-    link.href = canvas.toDataURL();
-    link.click();
-  };
-
-  if (loading) return <p className="text-sm text-gray-500">Loading focus data…</p>;
+  if (loading) return null;
+  if (error) return <div className="text-red-600">{error}</div>;
 
   return (
-    <div className="mb-8 px-4 sm:px-0">
-      {/* 🔒 Hidden clean snapshot card */}
-      <div style={{ position: 'absolute', left: '-10000px', top: 0 }} ref={hiddenRef}>
-        <ShareableCard
-          streak={metrics.streak}
-          longest={metrics.longest}
-          thisWeek={metrics.thisWeek}
-        />
+    <div className="border border-pink-200 bg-pink-50 p-6 rounded-lg shadow-sm mb-6 text-center">
+      <h2 className="text-xl font-bold text-pink-700 mb-3">🧠 Focus Streak (Last 7 Days)</h2>
+
+      <div className="flex justify-center flex-wrap gap-2 mb-3">
+        {blocks.map((b, i) => (
+          <div
+            key={i}
+            title={b.date}
+            className={`w-8 h-8 rounded-md ${
+              b.hasData ? 'bg-orange-400' : 'bg-gray-300'
+            } transition`}
+          />
+        ))}
       </div>
 
-      {/* 🎯 Visible Card */}
-      <div className="bg-white border text-gray-900 rounded-2xl p-6 sm:p-8 shadow text-center space-y-4">
-        <h2 className="text-xl sm:text-2xl font-bold text-blue-700">🧠 Focus Streak (Last 7 Days)</h2>
-
-        <p className="text-gray-700 text-sm sm:text-base">
-          🔥 {metrics.totalThisWeek} block{metrics.totalThisWeek !== 1 ? 's' : ''} logged this week
-        </p>
-
-        <p className={`text-sm sm:text-base font-medium ${
-          metrics.delta > 0 ? 'text-green-600' : metrics.delta < 0 ? 'text-red-600' : 'text-gray-500'
-        }`}>
-          {metrics.delta > 0 && `📈 Up ${metrics.delta} from last week`}
-          {metrics.delta < 0 && `📉 Down ${Math.abs(metrics.delta)} from last week`}
-          {metrics.delta === 0 && `➖ Same as last week`}
-        </p>
-
-        <div className="flex justify-center flex-wrap gap-4 sm:gap-5 pt-2">
-          {metrics.thisWeek.map((b, i) => {
-            const weekday = new Date(b.date).toLocaleDateString('en-US', { weekday: 'short' });
-            const color =
-              b.count === 0
-                ? 'bg-gray-200'
-                : b.count < 2
-                ? 'bg-yellow-300'
-                : b.count < 4
-                ? 'bg-orange-400'
-                : 'bg-green-500';
-
-            return (
-              <div key={i} className="flex flex-col items-center w-10">
-                <div
-                  title={`${b.count} focus block${b.count !== 1 ? 's' : ''} on ${weekday}`}
-                  className={`w-8 h-8 rounded-lg ${color} transform transition duration-300 hover:scale-110`}
-                />
-                <span className="text-[11px] text-gray-500 mt-1">{weekday}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="text-xs sm:text-sm text-gray-600 pt-2 space-y-1">
-          <p>🎯 Current streak: {metrics.streak} day{metrics.streak !== 1 ? 's' : ''}</p>
-          <p className={`${metrics.isNewRecord ? 'text-green-700 font-semibold animate-bounce' : ''}`}>
-            🏆 Longest streak: {metrics.longest} day{metrics.longest !== 1 ? 's' : ''} {metrics.isNewRecord && '🎉 New Record!'}
-          </p>
-        </div>
+      <div className="text-sm text-gray-700 mb-1">
+        {weeklyCount} blocks logged this week
+      </div>
+      <div className="text-sm mb-3">
+        {weeklyDelta >= 0 ? (
+          <span className="text-green-600">⬆ Up {weeklyDelta} from last week</span>
+        ) : (
+          <span className="text-red-600">⬇ Down {Math.abs(weeklyDelta)} from last week</span>
+        )}
       </div>
 
-      {/* 🧩 Share Buttons */}
-      <div className="flex justify-center gap-4 mt-4 flex-wrap">
-        <button
-          onClick={() => {
-            const msg = `🔥 I'm on a ${metrics.streak}-day focus streak using UltraDia!\nJoin me: https://ultradia.app`;
-            navigator.clipboard.writeText(msg);
-            alert('Copied! You can now paste your streak anywhere 💪');
-          }}
-          className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
-        >
-          📤 Copy My Streak Message
-        </button>
-
-        <button
-          onClick={handleSaveImage}
-          className="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition"
-        >
-          📷 Download Share Image
-        </button>
+      <div className="text-sm text-gray-800 flex justify-center gap-8">
+        <span>🔁 Current streak: <strong>{currentStreak}</strong> days</span>
+        <span>🏆 Longest streak: <strong>{longestStreak}</strong> days</span>
       </div>
     </div>
   );
