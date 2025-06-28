@@ -46,7 +46,7 @@ export default function LogRecordPage() {
       }
 
       sessionStorage.setItem('wake_time', wakeTime);
-      router.push('/ultradian');
+      router.push('/cycles');
     } catch (err) {
       setError('Something went wrong');
     }

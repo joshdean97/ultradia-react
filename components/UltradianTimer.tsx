@@ -1,4 +1,4 @@
-// Fixed version of UltradianTimer.tsx with logging, safe time parsing, and cycle change notifications
+// Fixed version of UltradianTimer.tsx with logging, safe time parsing, cycle change notifications, and onStageChange support
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -11,12 +11,14 @@ export default function UltradianTimer({
   troughDuration,
   grogDuration,
   cyclesCount,
+  onStageChange,
 }: {
   wakeTime: string;
   peakDuration: number;
   troughDuration: number;
   grogDuration: number;
   cyclesCount: number;
+  onStageChange: (phase: Phase) => void;
 }) {
   const [stage, setStage] = useState<Phase>('grog');
   const [timeLeft, setTimeLeft] = useState('00:00');
@@ -64,6 +66,7 @@ export default function UltradianTimer({
           setTimeLeft(`${minutes}:${seconds}`);
 
           if (prevStageRef.current !== seg.type) {
+            onStageChange(seg.type);
             notifyStageChange(seg.type);
             prevStageRef.current = seg.type;
           }
@@ -86,12 +89,13 @@ export default function UltradianTimer({
       setTimeLeft('');
       setSessionStatus('✅ Session Complete');
       setBgColor('bg-green-200 text-gray-800');
+      onStageChange('complete');
     };
 
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount, sessionEnded]);
+  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount, sessionEnded, onStageChange]);
 
   const notifyStageChange = (stage: Phase) => {
     if (!('Notification' in window)) return;
@@ -135,6 +139,7 @@ export default function UltradianTimer({
       setTimeLeft('');
       setSessionStatus('⏹ Session Ended');
       setBgColor('bg-gray-300 text-gray-700');
+      onStageChange('complete');
     } catch (err) {
       console.error('Error ending session:', err);
       alert('Could not end session. Try again.');
