@@ -1,6 +1,7 @@
+// Fixed version of UltradianTimer.tsx with logging, safe time parsing, and cycle change notifications
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 type Phase = 'grog' | 'peak' | 'trough' | 'complete';
 
@@ -23,13 +24,17 @@ export default function UltradianTimer({
   const [sessionEnded, setSessionEnded] = useState(false);
   const [sessionStatus, setSessionStatus] = useState('🟢 In Progress');
   const [currentCycle, setCurrentCycle] = useState(0);
+  const prevStageRef = useRef<Phase>('grog');
 
   useEffect(() => {
     if (sessionEnded) return;
 
-    const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number);
-    const start = new Date();
-    start.setHours(wakeHour, wakeMinute, 0, 0);
+    const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number).slice(0, 2);
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), wakeHour, wakeMinute);
+
+    console.log('Wake time:', wakeTime);
+    console.log('Start time:', start.toISOString());
 
     const segments: { type: Phase; duration: number }[] = [
       { type: 'grog', duration: grogDuration },
@@ -42,6 +47,8 @@ export default function UltradianTimer({
     const tick = () => {
       const now = new Date();
       const elapsedMin = Math.floor((now.getTime() - start.getTime()) / 60000);
+      console.log('Now:', now.toISOString(), 'Elapsed min:', elapsedMin);
+      console.log('Total duration:', segments.reduce((s, c) => s + c.duration, 0));
 
       let total = 0;
       let cycle = 0;
@@ -55,6 +62,12 @@ export default function UltradianTimer({
           const minutes = String(Math.floor(remainingSec / 60)).padStart(2, '0');
           const seconds = String(remainingSec % 60).padStart(2, '0');
           setTimeLeft(`${minutes}:${seconds}`);
+
+          if (prevStageRef.current !== seg.type) {
+            notifyStageChange(seg.type);
+            prevStageRef.current = seg.type;
+          }
+
           setStage(seg.type);
           setCurrentCycle(Math.floor((segStart - grogDuration) / (peakDuration + troughDuration)) + 1);
 
@@ -69,7 +82,6 @@ export default function UltradianTimer({
         total = segEnd;
       }
 
-      // Session naturally complete
       setStage('complete');
       setTimeLeft('');
       setSessionStatus('✅ Session Complete');
@@ -81,33 +93,43 @@ export default function UltradianTimer({
     return () => clearInterval(interval);
   }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount, sessionEnded]);
 
+  const notifyStageChange = (stage: Phase) => {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      new Notification('UltraDia', {
+        body:
+          stage === 'peak' ? '🔶 Peak cycle starting — time to focus!'
+          : stage === 'trough' ? '🔷 Trough cycle starting — take a break'
+          : stage === 'grog' ? '☁️ Morning Grog phase — ease into your day'
+          : '✅ Session complete.',
+      });
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') notifyStageChange(stage);
+      });
+    }
+  };
+
   const handleEndSession = async () => {
     try {
-      // Fetch today's record
       const res = await fetch('http://localhost:5000/records/today', {
         credentials: 'include',
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       });
-  
+
       if (!res.ok) throw new Error('Failed to fetch today’s record');
-  
+
       const record = await res.json();
-  
-      // Update the record with session end time
+
       const update = await fetch(`http://localhost:5000/records/${record.id}/`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          session_ended_at: new Date().toISOString(),
-        }),
+        body: JSON.stringify({ session_ended_at: new Date().toISOString() }),
       });
-  
+
       if (!update.ok) throw new Error('Failed to update session');
-  
-      // Local state update
+
       setSessionEnded(true);
       setStage('complete');
       setTimeLeft('');
@@ -118,7 +140,7 @@ export default function UltradianTimer({
       alert('Could not end session. Try again.');
     }
   };
-  
+
   const getStageLabel = () => {
     switch (stage) {
       case 'peak': return '🔶 Peak Focus';
