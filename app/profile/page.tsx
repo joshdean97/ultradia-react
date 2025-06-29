@@ -1,147 +1,187 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Pencil } from 'lucide-react';
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const [userId, setUserId] = useState<number | null>(null);
-  const [profile, setProfile] = useState({
-    name: '',
-    email: '',
-    peak_duration: 90,
-    trough_duration: 20,
-    grog_duration: 20,
-    cycles_count: 4,
-  });
-  const [message, setMessage] = useState('');
-  const [showCheck, setShowCheck] = useState(false);
+  const [profile, setProfile] = useState<any>({});
+  const [status, setStatus] = useState('');
+  const [editInfo, setEditInfo] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
       const res = await fetch('http://localhost:5000/users/me', {
         credentials: 'include',
       });
-      if (res.ok) {
-        const data = await res.json();
-        setProfile({
-          name: data.name,
-          email: data.email,
-          peak_duration: data.peak_duration,
-          trough_duration: data.trough_duration,
-          grog_duration: data.grog_duration,
-          cycles_count: data.cycles_count,
-        });
-        setUserId(data.id);
-      }
+      const data = await res.json();
+      setProfile(data);
     };
     fetchProfile();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setProfile((prev) => ({
-      ...prev,
-      [name]: name === 'email' || name === 'name' ? value : parseInt(value),
-    }));
+    setProfile((prev: any) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId) return;
-
-    const res = await fetch(`http://localhost:5000/users/${userId}/`, {
+  const handleSubmit = async () => {
+    const res = await fetch(`http://localhost:5000/users/${profile.id}/`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({
-        name: profile.name,
-        email: profile.email,
-        peak_duration: profile.peak_duration,
-        trough_duration: profile.trough_duration,
-        morning_grog: profile.grog_duration,
-        cycles: profile.cycles_count,
-      }),
+      body: JSON.stringify(profile),
     });
-
     if (res.ok) {
-      setMessage('Profile updated successfully.');
-      setShowCheck(true);
-      setTimeout(() => {
-        setShowCheck(false);
-        router.refresh(); // Auto-refresh current view
-        router.push('/ultradian'); // Navigate to updated view
-      }, 1500);
-    } else {
-      setMessage('Failed to update profile.');
+      setStatus('Saved!');
+      setTimeout(() => setStatus(''), 2000);
     }
   };
 
   const handleDelete = async () => {
-    if (!userId) return;
-    const confirmed = confirm('Are you sure you want to delete your account? This cannot be undone.');
-    if (!confirmed) return;
-
-    const res = await fetch(`http://localhost:5000/users/${userId}`, {
+    if (!confirm('Are you sure you want to delete your account?')) return;
+    const res = await fetch(`http://localhost:5000/users/${profile.id}/`, {
       method: 'DELETE',
       credentials: 'include',
     });
-
     if (res.ok) {
-      alert('Account deleted.');
-      router.push('/register');
-    } else {
-      alert('Failed to delete account.');
+      window.location.href = '/login';
     }
   };
 
+  const totalMinutes =
+    Number(profile.grog_duration || 0) +
+    Number(profile.cycles_count || 0) *
+      (Number(profile.peak_duration || 0) + Number(profile.trough_duration || 0));
+
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-6">
-      <div className="max-w-xl mx-auto bg-white p-6 rounded shadow">
-        <h1 className="text-2xl font-bold text-blue-600 mb-4">Rhythm Preferences</h1>
+    <main className="min-h-screen bg-gray-50 flex justify-center px-4 pt-10">
+      <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow space-y-6">
+        <h1 className="text-3xl font-semibold text-blue-700 text-center">Rhythm Preferences</h1>
 
-        {message && (
-          <div className="mb-4 text-sm text-center text-green-600 flex items-center justify-center gap-2">
-            {message} {showCheck && <span className="text-green-600 text-xl">✓</span>}
+        <div className="space-y-5">
+          <div className="relative">
+            <label className="text-sm font-semibold text-gray-700">Name</label>
+            <input
+              type="text"
+              name="name"
+              value={profile.name || ''}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-lg text-gray-800 px-3 py-2 mt-1 text-sm placeholder-gray-600"
+              disabled={!editInfo}
+              placeholder="Enter your name"
+            />
+            <button
+              onClick={() => setEditInfo((prev) => !prev)}
+              className="absolute right-2 top-7 text-gray-500 hover:text-gray-700"
+              title="Edit name/email"
+            >
+              <Pencil size={16} />
+            </button>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {[
-            { label: 'Name', name: 'name', type: 'text' },
-            { label: 'Email', name: 'email', type: 'email' },
-            { label: 'Peak Duration (minutes)', name: 'peak_duration', type: 'number' },
-            { label: 'Trough Duration (minutes)', name: 'trough_duration', type: 'number' },
-            { label: 'Morning Grog (minutes)', name: 'grog_duration', type: 'number' },
-            { label: 'Number of Cycles', name: 'cycles_count', type: 'number' },
-          ].map(({ label, name, type }) => (
-            <div key={name}>
-              <label className="block text-sm font-medium text-gray-800 mb-1">{label}</label>
-              <input
-                type={type}
-                name={name}
-                className="w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none text-gray-800 focus:ring-2 focus:ring-blue-500"
-                value={profile[name as keyof typeof profile] ?? ''}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          ))}
+          <div>
+            <label className="text-sm font-semibold text-gray-700">Email</label>
+            <input
+              type="email"
+              name="email"
+              value={profile.email || ''}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-lg px-3 text-gray-800 py-2 mt-1 text-sm placeholder-gray-600"
+              disabled={!editInfo}
+              placeholder="you@example.com"
+            />
+            <button
+              onClick={() => setEditInfo((prev) => !prev)}
+              className="absolute right-2 top-7 text-gray-500 hover:text-gray-700"
+              title="Edit name/email"
+            >
+              <Pencil size={16} />
+            </button>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">Peak Duration (minutes)</label>
+            <input
+              type="number"
+              name="peak_duration"
+              value={profile.peak_duration || ''}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-lg px-3 text-gray-800 py-2 mt-1 text-sm placeholder-gray-600"
+              placeholder="e.g. 90"
+            />
+            <p className="text-xs text-gray-500 mt-1">💡 90 min blocks work well for deep focus</p>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">Trough Duration (minutes)</label>
+            <input
+              type="number"
+              name="trough_duration"
+              value={profile.trough_duration || ''}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-lg text-gray-800 px-3 py-2 mt-1 text-sm placeholder-gray-600"
+              placeholder="e.g. 20"
+            />
+            <p className="text-xs text-gray-500 mt-1">💡 Shorter troughs help reset attention</p>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">Morning Grog (minutes)</label>
+            <input
+              type="number"
+              name="grog_duration"
+              value={profile.grog_duration || ''}
+              onChange={handleChange}
+              className="w-full border border-gray-300 text-gray-800 rounded-lg px-3 py-2 mt-1 text-sm placeholder-gray-600"
+              placeholder="e.g. 30"
+            />
+            <p className="text-xs text-gray-500 mt-1">☁️ Time to gently ease into the day</p>
+          </div>
+
+          <p className="text-sm text-center text-gray-600">
+            ⏱️ Approx. total session time: <span className="font-semibold text-gray-700">{totalMinutes} minutes</span>
+          </p>
 
           <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            onClick={handleSubmit}
+            className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition text-sm"
           >
             Save Changes
           </button>
-        </form>
 
-        <button
-          onClick={handleDelete}
-          className="mt-6 w-full text-sm text-red-600 underline hover:text-red-800"
-        >
-          Delete My Account
-        </button>
+          {status && (
+            <motion.p
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center text-green-600 font-medium text-sm"
+            >
+              ✔ {status}
+            </motion.p>
+          )}
+
+          <button
+            onClick={handleDelete}
+            className="w-full text-red-600 text-sm font-medium mt-4 hover:underline"
+          >
+            Delete My Account
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setProfile({
+                ...profile,
+                peak_duration: 90,
+                trough_duration: 20,
+                grog_duration: 30,
+              })
+            }
+            className="text-xs text-blue-500 underline mt-2 hover:text-blue-700 text-center w-full"
+          >
+            Reset to Default Rhythm
+          </button>
+        </div>
       </div>
     </main>
   );
