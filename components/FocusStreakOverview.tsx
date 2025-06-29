@@ -36,7 +36,7 @@ export default function FocusStreakOverview() {
           const dateStr = day.toISOString().slice(0, 10);
 
           try {
-            const res = await fetch(`http://localhost:5000/ultradian/?y=${y}&m=${m}&d=${d}`, {
+            const res = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
               credentials: 'include',
             });
 

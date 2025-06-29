@@ -17,7 +17,7 @@ export default function HistoryPage() {
   useEffect(() => {
     const fetchRecords = async () => {
       try {
-        const res = await fetch('http://localhost:5000/records/all', {
+        const res = await fetch('http://localhost:5000/api/records/all', {
           credentials: 'include',
         });
 
@@ -68,7 +68,7 @@ if (!Array.isArray(rawRecords)) {
     const m = date.getMonth() + 1;
     const d = date.getDate();
 
-    const res = await fetch(`http://localhost:5000/ultradian/?y=${y}&m=${m}&d=${d}`, {
+    const res = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
       credentials: 'include',
     });
 

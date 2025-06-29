@@ -16,7 +16,7 @@ export default function LogRecordPage() {
     e.preventDefault();
 
     try {
-      const todayRes = await fetch('http://localhost:5000/records/today', {
+      const todayRes = await fetch('http://localhost:5000/api/records/today', {
         credentials: 'include',
       });
 
@@ -30,14 +30,14 @@ export default function LogRecordPage() {
 
       if (todayRes.ok) {
         const existing = await todayRes.json();
-        await fetch(`http://localhost:5000/records/${existing.id}/`, {
+        await fetch(`http://localhost:5000/api/records/${existing.id}/`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify(body),
         });
       } else {
-        await fetch('http://localhost:5000/records/', {
+        await fetch('http://localhost:5000/api/records/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

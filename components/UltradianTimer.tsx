@@ -116,7 +116,7 @@ export default function UltradianTimer({
 
   const handleEndSession = async () => {
     try {
-      const res = await fetch('http://localhost:5000/records/today', {
+      const res = await fetch('http://localhost:5000/api/records/today', {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -125,7 +125,7 @@ export default function UltradianTimer({
 
       const record = await res.json();
 
-      const update = await fetch(`http://localhost:5000/records/${record.id}/`, {
+      const update = await fetch(`http://localhost:5000/api/records/${record.id}/`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

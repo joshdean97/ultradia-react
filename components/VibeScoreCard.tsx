@@ -15,7 +15,7 @@ export default function VibeScoreCard() {
   useEffect(() => {
     const fetchVibeScore = async () => {
       try {
-        const res = await fetch('http://localhost:5000/vibe-score/', {
+        const res = await fetch('http://localhost:5000/api/vibe-score/', {
           credentials: 'include',
         });
 

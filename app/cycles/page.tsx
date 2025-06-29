@@ -15,7 +15,7 @@ export default function CycleSelectorPage() {
   useEffect(() => {
     const fetchVibeScore = async () => {
       try {
-        const res = await fetch('http://localhost:5000/vibe-score/', {
+        const res = await fetch('http://localhost:5000/api/vibe-score/', {
           credentials: 'include',
         });
         if (!res.ok) throw new Error('Failed to fetch vibe score');
@@ -42,12 +42,12 @@ export default function CycleSelectorPage() {
 
   const handleSubmit = async () => {
     setSubmitted(true);
-    const res = await fetch('http://localhost:5000/users/me', {
+    const res = await fetch('http://localhost:5000/api/users/me', {
       credentials: 'include',
     });
     const user = await res.json();
 
-    await fetch(`http://localhost:5000/users/${user.id}/`, {
+    await fetch(`http://localhost:5000/api/users/${user.id}/`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

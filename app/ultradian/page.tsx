@@ -21,7 +21,7 @@ export default function UltradianPage() {
   useEffect(() => {
     const fetchEverything = async () => {
       try {
-        const userRes = await fetch('http://localhost:5000/users/me', {
+        const userRes = await fetch('http://localhost:5000/api/users/me', {
           credentials: 'include',
         });
         const userData = await userRes.json();
@@ -39,7 +39,7 @@ export default function UltradianPage() {
         const m = today.getMonth() + 1;
         const d = today.getDate();
 
-        const recordRes = await fetch(`http://localhost:5000/records/today?y=${y}&m=${m}&d=${d}`, {
+        const recordRes = await fetch(`http://localhost:5000/api/records/today?y=${y}&m=${m}&d=${d}`, {
           credentials: 'include',
         });
         if (!recordRes.ok) {
@@ -47,7 +47,7 @@ export default function UltradianPage() {
           return;
         }
 
-        const ultraRes = await fetch(`http://localhost:5000/ultradian/?y=${y}&m=${m}&d=${d}`, {
+        const ultraRes = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
           credentials: 'include',
         });
         const data = await ultraRes.json();
@@ -58,7 +58,7 @@ export default function UltradianPage() {
         }
 
         // Optional: vital index for CircadianPromptCard
-        const energyRes = await fetch('http://localhost:5000/energy-potential/', {
+        const energyRes = await fetch('http://localhost:5000/api/energy-potential/', {
           credentials: 'include',
         });
         const energy = await energyRes.json();
