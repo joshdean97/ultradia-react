@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 type Props = {
   phase: 'grog' | 'peak' | 'trough' | 'complete';
-  vitalIndex: number | null;
+  vibeScore: number | null;
 };
 
 const getTimeOfDay = (): 'early_morning' | 'late_morning' | 'afternoon' | 'evening' => {
@@ -16,10 +16,10 @@ const getTimeOfDay = (): 'early_morning' | 'late_morning' | 'afternoon' | 'eveni
   return 'evening';
 };
 
-const getEnergyStatus = (vitalIndex: number | null): 'high' | 'stable' | 'low' => {
-  if (vitalIndex === null) return 'stable';
-  if (vitalIndex > 120) return 'high';
-  if (vitalIndex >= 90) return 'stable';
+const getVibeStatus = (vibe: number | null): 'high' | 'balanced' | 'low' => {
+  if (vibe === null) return 'balanced';
+  if (vibe >= 4) return 'high';
+  if (vibe >= 2) return 'balanced';
   return 'low';
 };
 
@@ -32,7 +32,7 @@ const getPrompt = (phase: string, timeOfDay: string, energy: string) => {
     if (energy === 'high') {
       return '💪 Now’s the time for deep focus, creative sprints, or intense training like weightlifting or HIIT.';
     }
-    if (energy === 'stable') {
+    if (energy === 'balanced') {
       return '⚖️ Ideal window for moderate cognitive work or a solid workout like a run, brisk walk, or circuit.';
     }
     return '📘 Use this peak to learn gently, organize tasks, or do light movement like yoga.';
@@ -58,16 +58,28 @@ const getPrompt = (phase: string, timeOfDay: string, energy: string) => {
   return '💤 No guidance available.';
 };
 
-export default function CircadianPromptCard({ phase, vitalIndex }: Props) {
+export default function CircadianPromptCard({ phase, vibeScore }: Props) {
   const [timeOfDay, setTimeOfDay] = useState(getTimeOfDay());
   const pathname = usePathname();
-  const energyStatus = getEnergyStatus(vitalIndex);
+
+  const vibeStatus = getVibeStatus(typeof vibeScore === 'string' ? parseFloat(vibeScore) : vibeScore);
+
+  const statusLabel = {
+    high: 'Elevated 🔋',
+    balanced: 'Balanced ⚖️',
+    low: 'Depleted 💤',
+  }[vibeStatus];
+
+  const promptStyle = {
+    high: 'bg-green-50 border-green-400',
+    balanced: 'bg-yellow-50 border-yellow-400',
+    low: 'bg-red-50 border-red-400',
+  }[vibeStatus];
 
   useEffect(() => {
     setTimeOfDay(getTimeOfDay());
   }, [pathname]);
 
-  // Optional: auto-update every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeOfDay(getTimeOfDay());
@@ -75,13 +87,15 @@ export default function CircadianPromptCard({ phase, vitalIndex }: Props) {
     return () => clearInterval(interval);
   }, []);
 
-  const prompt = getPrompt(phase, timeOfDay, energyStatus);
+  const prompt = getPrompt(phase, timeOfDay, vibeStatus);
 
   return (
-    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md shadow">
+    <div className={`border-l-4 p-4 rounded-md shadow ${promptStyle}`}>
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold text-yellow-800">🧭 Circadian Prompt</h2>
-        <span className="text-xs text-gray-500">{`⚡ ${energyStatus} | 🕒 ${timeOfDay.replace('_', ' ')}`}</span>
+        <h2 className="text-sm font-bold text-gray-800">🧭 Circadian Prompt</h2>
+        <span className="text-xs text-gray-600">
+          {`${statusLabel} | 🕒 ${timeOfDay.replace('_', ' ')}`}
+        </span>
       </div>
       <p className="text-base mt-1 text-blue-700 font-medium leading-snug">
         {prompt}

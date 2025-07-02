@@ -1,7 +1,6 @@
-// Fixed version of UltradianTimer.tsx with logging, safe time parsing, cycle change notifications, and onStageChange support
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
 type Phase = 'grog' | 'peak' | 'trough' | 'complete';
 
@@ -11,32 +10,28 @@ export default function UltradianTimer({
   troughDuration,
   grogDuration,
   cyclesCount,
-  onStageChange,
+  vibeScore,
 }: {
   wakeTime: string;
   peakDuration: number;
   troughDuration: number;
   grogDuration: number;
   cyclesCount: number;
-  onStageChange: (phase: Phase) => void;
+  vibeScore: number | null;
 }) {
   const [stage, setStage] = useState<Phase>('grog');
   const [timeLeft, setTimeLeft] = useState('00:00');
-  const [bgColor, setBgColor] = useState('bg-gray-200');
+  const [bgColor, setBgColor] = useState('bg-gray-200 text-gray-800');
   const [sessionEnded, setSessionEnded] = useState(false);
   const [sessionStatus, setSessionStatus] = useState('🟢 In Progress');
   const [currentCycle, setCurrentCycle] = useState(0);
-  const prevStageRef = useRef<Phase>('grog');
 
   useEffect(() => {
     if (sessionEnded) return;
 
-    const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number).slice(0, 2);
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), wakeHour, wakeMinute);
-
-    console.log('Wake time:', wakeTime);
-    console.log('Start time:', start.toISOString());
+    const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number);
+    const start = new Date();
+    start.setHours(wakeHour, wakeMinute, 0, 0);
 
     const segments: { type: Phase; duration: number }[] = [
       { type: 'grog', duration: grogDuration },
@@ -49,8 +44,6 @@ export default function UltradianTimer({
     const tick = () => {
       const now = new Date();
       const elapsedMin = Math.floor((now.getTime() - start.getTime()) / 60000);
-      console.log('Now:', now.toISOString(), 'Elapsed min:', elapsedMin);
-      console.log('Total duration:', segments.reduce((s, c) => s + c.duration, 0));
 
       let total = 0;
       let cycle = 0;
@@ -64,24 +57,29 @@ export default function UltradianTimer({
           const minutes = String(Math.floor(remainingSec / 60)).padStart(2, '0');
           const seconds = String(remainingSec % 60).padStart(2, '0');
           setTimeLeft(`${minutes}:${seconds}`);
-
-          if (prevStageRef.current !== seg.type) {
-            onStageChange(seg.type);
-            notifyStageChange(seg.type);
-            prevStageRef.current = seg.type;
-          }
-
           setStage(seg.type);
           setCurrentCycle(Math.floor((segStart - grogDuration) / (peakDuration + troughDuration)) + 1);
 
-          setBgColor(
-            seg.type === 'peak' ? 'bg-green-600 text-white' :
-            seg.type === 'trough' ? 'bg-blue-200 text-gray-800' :
-            seg.type === 'grog' ? 'bg-gray-200 text-gray-800' :
-            'bg-green-200 text-gray-800'
-          );
+          // New: adaptive color based on vibeScore + stage
+          let color = 'bg-gray-200 text-gray-800';
+          if (seg.type === 'peak') {
+            if (vibeScore !== null) {
+              if (vibeScore >= 4) color = 'bg-green-600 text-white';
+              else if (vibeScore >= 2) color = 'bg-yellow-400 text-gray-900';
+              else color = 'bg-rose-200 text-gray-800';
+            } else {
+              color = 'bg-blue-500 text-white';
+            }
+          } else if (seg.type === 'trough') {
+            color = 'bg-blue-200 text-gray-800';
+          } else if (seg.type === 'grog') {
+            color = 'bg-gray-200 text-gray-800';
+          }
+
+          setBgColor(color);
           return;
         }
+
         total = segEnd;
       }
 
@@ -89,34 +87,16 @@ export default function UltradianTimer({
       setTimeLeft('');
       setSessionStatus('✅ Session Complete');
       setBgColor('bg-green-200 text-gray-800');
-      onStageChange('complete');
     };
 
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount, sessionEnded, onStageChange]);
-
-  const notifyStageChange = (stage: Phase) => {
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'granted') {
-      new Notification('UltraDia', {
-        body:
-          stage === 'peak' ? '🔶 Peak cycle starting — time to focus!'
-          : stage === 'trough' ? '🔷 Trough cycle starting — take a break'
-          : stage === 'grog' ? '☁️ Morning Grog phase — ease into your day'
-          : '✅ Session complete.',
-      });
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') notifyStageChange(stage);
-      });
-    }
-  };
+  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount, vibeScore, sessionEnded]);
 
   const handleEndSession = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/records/today', {
+      const res = await fetch('http://localhost:5000/records/today', {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -125,11 +105,15 @@ export default function UltradianTimer({
 
       const record = await res.json();
 
-      const update = await fetch(`http://localhost:5000/api/records/${record.id}/`, {
+      const update = await fetch(`http://localhost:5000/records/${record.id}/`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
-        body: JSON.stringify({ session_ended_at: new Date().toISOString() }),
+        body: JSON.stringify({
+          session_ended_at: new Date().toISOString(),
+        }),
       });
 
       if (!update.ok) throw new Error('Failed to update session');
@@ -139,7 +123,6 @@ export default function UltradianTimer({
       setTimeLeft('');
       setSessionStatus('⏹ Session Ended');
       setBgColor('bg-gray-300 text-gray-700');
-      onStageChange('complete');
     } catch (err) {
       console.error('Error ending session:', err);
       alert('Could not end session. Try again.');
@@ -154,6 +137,13 @@ export default function UltradianTimer({
       case 'complete': return sessionStatus;
       default: return '';
     }
+  };
+
+  const getEndSessionStyle = () => {
+    if (vibeScore === null) return 'bg-blue-600 hover:bg-blue-700';
+    if (vibeScore >= 4) return 'bg-green-700 hover:bg-green-800';
+    if (vibeScore >= 2) return 'bg-yellow-500 hover:bg-yellow-600';
+    return 'bg-red-600 hover:bg-red-700';
   };
 
   return (
@@ -173,7 +163,7 @@ export default function UltradianTimer({
           </span>
           <button
             onClick={handleEndSession}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+            className={`${getEndSessionStyle()} text-white px-4 py-2 rounded-lg text-sm font-semibold transition`}
           >
             🛑 End Session
           </button>

@@ -15,7 +15,7 @@ export default function UltradianPage() {
   const [wakeTime, setWakeTime] = useState('');
   const [user, setUser] = useState<any>(null);
   const [currentStage, setCurrentStage] = useState<'grog' | 'peak' | 'trough' | 'complete'>('grog');
-  const [vitalIndex, setVitalIndex] = useState<number | null>(null);
+  const [vibeScore, setVibeScore] = useState<number | null>(null); // ⬅️ new
   const [showCycles, setShowCycles] = useState(false);
 
   useEffect(() => {
@@ -46,6 +46,8 @@ export default function UltradianPage() {
           router.push('/log');
           return;
         }
+        const record = await recordRes.json();
+        setVibeScore(record.vibe_score ?? null); // ⬅️ set vibeScore from record
 
         const ultraRes = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
           credentials: 'include',
@@ -56,13 +58,6 @@ export default function UltradianPage() {
         } else {
           setError(data.message || 'Failed to generate cycles');
         }
-
-        // Optional: vital index for CircadianPromptCard
-        const energyRes = await fetch('http://localhost:5000/api/energy-potential/', {
-          credentials: 'include',
-        });
-        const energy = await energyRes.json();
-        setVitalIndex(energy.vital_index ?? null);
       } catch (err) {
         setError('Something went wrong');
       } finally {
@@ -84,17 +79,18 @@ export default function UltradianPage() {
         {error && <p className="text-center text-red-600">{error}</p>}
 
         {!loading && !error && (
-          <>
-            <UltradianTimer
-              wakeTime={wakeTime}
-              peakDuration={user.peak_duration}
-              troughDuration={user.trough_duration}
-              grogDuration={user.grog_duration}
-              cyclesCount={user.cycles_count}
-              onStageChange={setCurrentStage}
-            />
+                  <>
+        <UltradianTimer
+          wakeTime={wakeTime}
+          peakDuration={user.peak_duration}
+          troughDuration={user.trough_duration}
+          grogDuration={user.grog_duration}
+          cyclesCount={user.cycles_count}
+          vibeScore={vibeScore} 
+          onStageChange={setCurrentStage}
+        />
 
-            <CircadianPromptCard phase={currentStage} vitalIndex={vitalIndex} />
+            <CircadianPromptCard phase={currentStage} vibeScore={vibeScore} /> {/* ⬅️ fixed */}
 
             <div className="pt-6 border-t">
               <button

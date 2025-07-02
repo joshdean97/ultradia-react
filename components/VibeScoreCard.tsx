@@ -30,7 +30,7 @@ export default function VibeScoreCard() {
         setPrompt(data.prompt);
         setPenalties(data.penalties || []);
 
-        if (data.score > 90 && !celebrated) {
+        if (data.score > 95 && !celebrated) {
           confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
           setCelebrated(true);
         }
