@@ -12,6 +12,7 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
 
     try {
       const res = await fetch('http://localhost:5000/api/auth/register', {
@@ -22,11 +23,36 @@ export default function RegisterPage() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        router.push('/login'); // Redirect to login after success
-      } else {
+      if (!res.ok) {
         setError(data.error || 'Registration failed');
+        return;
       }
+
+      // 🔐 Auto-login after registration
+      const loginRes = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const loginData = await loginRes.json();
+
+      if (loginRes.ok && loginData.access_token) {
+        localStorage.setItem('access_token', loginData.access_token);
+
+        // check if user already logged a record today
+        const token = loginData.access_token;
+        const recordRes = await fetch('http://localhost:5000/api/records/today/', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        router.push(recordRes.ok ? '/ultradian' : '/log');
+      } else {
+        router.push('/login'); // fallback
+      }
+
     } catch (err) {
       setError('Something went wrong');
     }
@@ -95,7 +121,10 @@ export default function RegisterPage() {
         </form>
 
         <p className="text-sm text-center text-gray-600">
-          Already have an account? <a href="/login" className="text-blue-500 hover:underline">Login</a>
+          Already have an account?{' '}
+          <a href="/login" className="text-blue-500 hover:underline">
+            Login
+          </a>
         </p>
       </div>
     </main>

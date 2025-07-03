@@ -15,13 +15,18 @@ export default function HistoryPage() {
   const recordsPerPage = 5;
 
   useEffect(() => {
-    const fetchRecords = async () => {
-      try {
-        const res = await fetch('http://localhost:5000/api/records/all', {
-          credentials: 'include',
-        });
+  const fetchRecords = async () => {
+    const token = localStorage.getItem("access_token");
+    try {
+      const res = await fetch('http://localhost:5000/api/records/all', {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-        const data = await res.json();
+    const data = await res.json();
+    // ... (no changes to the rest)
         console.log("Fetched record data:", data);
 
         const rawRecords = Array.isArray(data)
@@ -63,13 +68,16 @@ if (!Array.isArray(rawRecords)) {
   }, []);
 
   const goToUltradian = async (record: any) => {
+    const token = localStorage.getItem("access_token");
     const date = new Date(record.date);
     const y = date.getFullYear();
     const m = date.getMonth() + 1;
     const d = date.getDate();
 
     const res = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
-      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (!res.ok) {

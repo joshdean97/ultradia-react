@@ -12,45 +12,52 @@ export default function LogRecordPage() {
   const [mood, setMood] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  const token = localStorage.getItem("access_token");
 
-    try {
-      const todayRes = await fetch('http://localhost:5000/api/records/today', {
-        credentials: 'include',
+  try {
+    const todayRes = await fetch('http://localhost:5000/api/records/today', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const body = {
+      wake_time: wakeTime,
+      hrv: parseFloat(hrv),
+      rhr: parseFloat(rhr),
+      sleep_duration: parseFloat(sleep),
+      mood,
+    };
+
+    if (todayRes.ok) {
+      const existing = await todayRes.json();
+      await fetch(`http://localhost:5000/api/records/${existing.id}/`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
       });
-
-      const body = {
-        wake_time: wakeTime,
-        hrv: parseFloat(hrv),
-        rhr: parseFloat(rhr),
-        sleep_duration: parseFloat(sleep),
-        mood,
-      };
-
-      if (todayRes.ok) {
-        const existing = await todayRes.json();
-        await fetch(`http://localhost:5000/api/records/${existing.id}/`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(body),
-        });
-      } else {
-        await fetch('http://localhost:5000/api/records/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(body),
-        });
-      }
-
-      sessionStorage.setItem('wake_time', wakeTime);
-      router.push('/cycles');
-    } catch (err) {
-      setError('Something went wrong');
+    } else {
+      await fetch('http://localhost:5000/api/records/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
     }
-  };
+
+    sessionStorage.setItem('wake_time', wakeTime);
+    router.push('/cycles');
+  } catch (err) {
+    setError('Something went wrong');
+  }
+};
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">

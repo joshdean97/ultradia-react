@@ -21,28 +21,36 @@ export default function Navbar() {
 
   useEffect(() => {
     const fetchUser = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
       try {
         const res = await fetch('http://localhost:5000/api/users/me', {
-          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         if (res.ok) {
           const data = await res.json();
           setUser({ name: data.name });
+        } else {
+          // Invalid token or expired
+          localStorage.removeItem('access_token');
+          router.push('/login');
         }
       } catch (err) {
         console.error('User fetch failed:', err);
+        localStorage.removeItem('access_token');
+        router.push('/login');
       }
     };
 
     fetchUser();
-  }, []);
+  }, [router]);
 
-  const handleLogout = async () => {
-    await fetch('http://localhost:5000/api/auth/logout', {
-      method: 'POST',
-      credentials: 'include',
-    });
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
     router.push('/login');
   };
 

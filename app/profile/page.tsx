@@ -11,11 +11,22 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const res = await fetch('http://localhost:5000/api/users/me', {
-        credentials: 'include',
-      });
-      const data = await res.json();
-      setProfile(data);
+      const token = localStorage.getItem("access_token");
+      if (!token) return;
+
+      try {
+        const res = await fetch('http://localhost:5000/api/users/me', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data);
+        }
+      } catch (err) {
+        console.error("Error fetching profile", err);
+      }
     };
     fetchProfile();
   }, []);
@@ -26,26 +37,45 @@ export default function ProfilePage() {
   };
 
   const handleSubmit = async () => {
-    const res = await fetch(`http://localhost:5000/api/users/${profile.id}/`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(profile),
-    });
-    if (res.ok) {
-      setStatus('Saved!');
-      setTimeout(() => setStatus(''), 2000);
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/users/${profile.id}/`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(profile),
+      });
+      if (res.ok) {
+        setStatus('Saved!');
+        setTimeout(() => setStatus(''), 2000);
+      }
+    } catch (err) {
+      console.error("Error saving profile", err);
     }
   };
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete your account?')) return;
-    const res = await fetch(`http://localhost:5000/api/users/${profile.id}/`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (res.ok) {
-      window.location.href = '/login';
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/users/${profile.id}/`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        localStorage.removeItem("access_token");
+        window.location.href = '/login';
+      }
+    } catch (err) {
+      console.error("Error deleting profile", err);
     }
   };
 
@@ -91,13 +121,6 @@ export default function ProfilePage() {
               disabled={!editInfo}
               placeholder="you@example.com"
             />
-            <button
-              onClick={() => setEditInfo((prev) => !prev)}
-              className="absolute right-2 top-7 text-gray-500 hover:text-gray-700"
-              title="Edit name/email"
-            >
-              <Pencil size={16} />
-            </button>
           </div>
 
           <div>

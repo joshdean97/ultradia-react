@@ -14,9 +14,13 @@ export default function CycleSelectorPage() {
 
   useEffect(() => {
     const fetchVibeScore = async () => {
+      const token = localStorage.getItem("access_token");
       try {
         const res = await fetch('http://localhost:5000/api/vibe-score/', {
-          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
         });
         if (!res.ok) throw new Error('Failed to fetch vibe score');
         const data = await res.json();
@@ -42,15 +46,22 @@ export default function CycleSelectorPage() {
 
   const handleSubmit = async () => {
     setSubmitted(true);
+    const token = localStorage.getItem("access_token");
+
     const res = await fetch('http://localhost:5000/api/users/me', {
-      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
+
     const user = await res.json();
 
     await fetch(`http://localhost:5000/api/users/${user.id}/`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ cycles: selectedCycles }),
     });
 

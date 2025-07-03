@@ -14,9 +14,18 @@ export default function VibeScoreCard() {
 
   useEffect(() => {
     const fetchVibeScore = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setError('Missing token');
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await fetch('http://localhost:5000/api/vibe-score/', {
-          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         if (!res.ok) {
@@ -35,7 +44,7 @@ export default function VibeScoreCard() {
           setCelebrated(true);
         }
       } catch (err: any) {
-        setError(err.message);
+        setError(err.message || 'Something went wrong');
       } finally {
         setLoading(false);
       }
@@ -87,7 +96,7 @@ export default function VibeScoreCard() {
                   ⚠️ Factors Affecting Your Vibe
                 </span>
               </div>
-            <ul className="text-sm text-gray-600 space-y-1 list-disc list-outside pl-5 inline-block text-left">
+              <ul className="text-sm text-gray-600 space-y-1 list-disc list-outside pl-5 inline-block text-left">
                 {penalties.map((p, i) => (
                   <li key={i}>{p}</li>
                 ))}

@@ -18,6 +18,8 @@ export default function FocusStreakOverview() {
 
   useEffect(() => {
     const today = new Date();
+    const token = localStorage.getItem('access_token');
+    if (!token) return setError('Missing auth token');
 
     const fetchBlockStatus = async () => {
       try {
@@ -37,14 +39,12 @@ export default function FocusStreakOverview() {
 
           try {
             const res = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
-              credentials: 'include',
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             });
 
-            if (res.status === 200) {
-              results.push({ date: dateStr, hasData: true });
-            } else {
-              results.push({ date: dateStr, hasData: false });
-            }
+            results.push({ date: dateStr, hasData: res.status === 200 });
           } catch {
             results.push({ date: dateStr, hasData: false });
           }

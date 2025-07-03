@@ -60,7 +60,6 @@ export default function UltradianTimer({
           setStage(seg.type);
           setCurrentCycle(Math.floor((segStart - grogDuration) / (peakDuration + troughDuration)) + 1);
 
-          // New: adaptive color based on vibeScore + stage
           let color = 'bg-gray-200 text-gray-800';
           if (seg.type === 'peak') {
             if (vibeScore !== null) {
@@ -95,22 +94,26 @@ export default function UltradianTimer({
   }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount, vibeScore, sessionEnded]);
 
   const handleEndSession = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return alert('Missing token');
+
     try {
       const res = await fetch('http://localhost:5000/records/today', {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!res.ok) throw new Error('Failed to fetch today’s record');
-
       const record = await res.json();
 
       const update = await fetch(`http://localhost:5000/records/${record.id}/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
-        credentials: 'include',
         body: JSON.stringify({
           session_ended_at: new Date().toISOString(),
         }),

@@ -31,10 +31,15 @@ export default function EnergyPotentialCard() {
 
   useEffect(() => {
     const fetchEnergyPotential = async () => {
+      const token = localStorage.getItem("access_token");
+      if (!token) return setError("No token found");
+
       try {
         const res = await fetch("http://localhost:5000/api/energy-potential/", {
           method: "GET",
-          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         const data = await res.json();

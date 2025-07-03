@@ -10,74 +10,74 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [checkingSession, setCheckingSession] = useState(true);
 
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const res = await fetch('http://localhost:5000/api/users/me', {
-          credentials: 'include',
-        });
-        if (res.ok) {
-          const today = new Date();
-          const y = today.getFullYear();
-          const m = today.getMonth() + 1;
-          const d = today.getDate();
+useEffect(() => {
+  const token = localStorage.getItem("access_token");
 
-          const r = await fetch(`http://localhost:5000/api/records/`, {
-            credentials: 'include',
-          });
-
-          if (r.ok) {
-            router.push('/ultradian');
-          } else {
-            router.push('/log');
-          }
-        }
-      } catch (err) {
-        // No active session, stay on login
-      } finally {
-        setCheckingSession(false);
-      }
-    };
-    checkSession();
-  }, [router]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const checkSession = async () => {
+    if (!token) return setCheckingSession(false);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
+      const res = await fetch('http://localhost:5000/api/users/me', {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = await res.json();
-
       if (res.ok) {
-        const today = new Date();
-        const y = today.getFullYear();
-        const m = today.getMonth() + 1;
-        const d = today.getDate();
-
-        const r = await fetch(`http://localhost:5000/api/records/today/`, {
-          credentials: 'include',
+        const r = await fetch('http://localhost:5000/api/records/today/', {
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        if (r.ok) {
-          router.push('/ultradian');
-        } else {
-          router.push('/log');
-        }
-      } else {
-        setError(data.error || 'Login failed');
+        router.push(r.ok ? '/ultradian' : '/log');
       }
-    } catch (err) {
-      setError('Something went wrong');
+    } catch {
+      // no-op
+    } finally {
+      setCheckingSession(false);
     }
   };
 
-  if (checkingSession) return null;
+  checkSession();
+}, [router]);
+
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
+
+  try {
+    const res = await fetch('http://localhost:5000/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.access_token) {
+      localStorage.setItem('access_token', data.access_token); // ✅ Save token
+
+      const token = data.access_token;
+      const r = await fetch('http://localhost:5000/api/records/today/', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      router.push(r.ok ? '/ultradian' : '/log');
+    } else {
+      setError(data.error || 'Login failed');
+    }
+  } catch (err) {
+    setError('Something went wrong');
+  }
+};
+
+ if (checkingSession) {
+    return (
+      <main className="flex items-center justify-center min-h-screen bg-gray-50">
+        <p className="text-gray-500 text-sm">Checking session...</p>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">

@@ -15,23 +15,24 @@ export default function UltradianPage() {
   const [wakeTime, setWakeTime] = useState('');
   const [user, setUser] = useState<any>(null);
   const [currentStage, setCurrentStage] = useState<'grog' | 'peak' | 'trough' | 'complete'>('grog');
-  const [vibeScore, setVibeScore] = useState<number | null>(null); // ⬅️ new
+  const [vibeScore, setVibeScore] = useState<number | null>(null);
   const [showCycles, setShowCycles] = useState(false);
 
   useEffect(() => {
     const fetchEverything = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) return router.push('/login');
+
       try {
-        const userRes = await fetch('http://localhost:5000/api/users/me', {
-          credentials: 'include',
-        });
+        const headers = { Authorization: `Bearer ${token}` };
+
+        const userRes = await fetch('http://localhost:5000/api/users/me', { headers });
+        if (!userRes.ok) throw new Error('Unauthorized');
         const userData = await userRes.json();
         setUser(userData);
 
         const wakeTimeStored = sessionStorage.getItem('wake_time');
-        if (!wakeTimeStored) {
-          router.push('/log');
-          return;
-        }
+        if (!wakeTimeStored) return router.push('/log');
         setWakeTime(wakeTimeStored);
 
         const today = new Date();
@@ -40,17 +41,14 @@ export default function UltradianPage() {
         const d = today.getDate();
 
         const recordRes = await fetch(`http://localhost:5000/api/records/today?y=${y}&m=${m}&d=${d}`, {
-          credentials: 'include',
+          headers,
         });
-        if (!recordRes.ok) {
-          router.push('/log');
-          return;
-        }
+        if (!recordRes.ok) return router.push('/log');
         const record = await recordRes.json();
-        setVibeScore(record.vibe_score ?? null); // ⬅️ set vibeScore from record
+        setVibeScore(record.vibe_score ?? null);
 
         const ultraRes = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
-          credentials: 'include',
+          headers,
         });
         const data = await ultraRes.json();
         if (ultraRes.ok) {
@@ -79,18 +77,18 @@ export default function UltradianPage() {
         {error && <p className="text-center text-red-600">{error}</p>}
 
         {!loading && !error && (
-                  <>
-        <UltradianTimer
-          wakeTime={wakeTime}
-          peakDuration={user.peak_duration}
-          troughDuration={user.trough_duration}
-          grogDuration={user.grog_duration}
-          cyclesCount={user.cycles_count}
-          vibeScore={vibeScore} 
-          onStageChange={setCurrentStage}
-        />
+          <>
+            <UltradianTimer
+              wakeTime={wakeTime}
+              peakDuration={user.peak_duration}
+              troughDuration={user.trough_duration}
+              grogDuration={user.grog_duration}
+              cyclesCount={user.cycles_count}
+              vibeScore={vibeScore}
+              onStageChange={setCurrentStage}
+            />
 
-            <CircadianPromptCard phase={currentStage} vibeScore={vibeScore} /> {/* ⬅️ fixed */}
+            <CircadianPromptCard phase={currentStage} vibeScore={vibeScore} />
 
             <div className="pt-6 border-t">
               <button
