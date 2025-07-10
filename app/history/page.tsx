@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
 import FocusStreakOverview from '@/components/FocusStreakOverview';
+import TableSkeleton from '@/components/TableSkeleton';
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -127,7 +128,9 @@ if (!Array.isArray(rawRecords)) {
         <FocusStreakOverview />
 
         {loading ? (
-          <p className="text-gray-600">Loading records...</p>
+           <>
+    <TableSkeleton rows={5} />
+  </>
         ) : error ? (
           <p className="text-red-600">{error}</p>
         ) : (

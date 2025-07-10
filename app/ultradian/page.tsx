@@ -31,9 +31,21 @@ export default function UltradianPage() {
         const userData = await userRes.json();
         setUser(userData);
 
-        const wakeTimeStored = sessionStorage.getItem('wake_time');
-        if (!wakeTimeStored) return router.push('/log');
-        setWakeTime(wakeTimeStored);
+      let wakeTimeStored = sessionStorage.getItem('wake_time');
+
+      if (!wakeTimeStored) {
+        const recordRes = await fetch(`http://localhost:5000/api/records/today?y=${y}&m=${m}&d=${d}`, {
+          headers,
+        });
+
+        if (!recordRes.ok) return router.push('/log');
+
+        const record = await recordRes.json();
+        wakeTimeStored = record.wake_time;
+        sessionStorage.setItem('wake_time', wakeTimeStored);
+      }
+
+      setWakeTime(wakeTimeStored);
 
         const today = new Date();
         const y = today.getFullYear();
@@ -66,6 +78,40 @@ export default function UltradianPage() {
     fetchEverything();
   }, [router]);
 
+  const handleCycleComplete = async (
+  start: string,
+  end: string,
+  eventType: 'peak' | 'trough'
+) => {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+
+  try {
+    const res = await fetch('http://localhost:5000/api/cycles', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        start_time: start,
+        end_time: end,
+        event_type: eventType,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      console.warn('Failed to log cycle:', err);
+    } else {
+      console.log(`✅ Logged ${eventType} event`);
+    }
+  } catch (err) {
+    console.error('Error logging cycle:', err);
+  }
+};
+
+
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto bg-white px-6 py-10 rounded-2xl shadow-md space-y-10">
@@ -78,15 +124,16 @@ export default function UltradianPage() {
 
         {!loading && !error && (
           <>
-            <UltradianTimer
-              wakeTime={wakeTime}
-              peakDuration={user.peak_duration}
-              troughDuration={user.trough_duration}
-              grogDuration={user.grog_duration}
-              cyclesCount={user.cycles_count}
-              vibeScore={vibeScore}
-              onStageChange={setCurrentStage}
-            />
+          <UltradianTimer
+            wakeTime={wakeTime}
+            peakDuration={user.peak_duration}
+            troughDuration={user.trough_duration}
+            grogDuration={user.grog_duration}
+            cyclesCount={user.cycles_count}
+            vibeScore={vibeScore}
+            onStageChange={setCurrentStage}
+            onCycleComplete={handleCycleComplete}
+          />
 
             <CircadianPromptCard phase={currentStage} vibeScore={vibeScore} />
 

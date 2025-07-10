@@ -1,10 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import ShareableCard from './ShareableCard';
+import FocusStreakSkeleton from './FocusStreakSkeleton';
 
 type Block = {
   date: string;
   hasData: boolean;
+};
+
+type Props = {
+  streak: number;
+  longest: number;
+  thisWeek: { date: string; count: number }[];
 };
 
 export default function FocusStreakOverview() {
@@ -15,7 +24,39 @@ export default function FocusStreakOverview() {
   const [weeklyDelta, setWeeklyDelta] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
+  const cardRef = useRef<HTMLDivElement>(null);
 
+  // Compute color coding logic
+  const getWeekday = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
+
+  const dayGroups: Record<string, number[]> = {};
+  blocks.forEach((b) => {
+    const day = getWeekday(b.date);
+    if (!dayGroups[day]) dayGroups[day] = [];
+    dayGroups[day].push(b.hasData ? 1 : 0);
+  });
+
+const weekdayAverages: Record<string, number> = {};
+for (const day in dayGroups) {
+  const values = dayGroups[day];
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  weekdayAverages[day] = Math.ceil(avg);
+}
+  console.log('Weekday averages:', weekdayAverages);
+
+const getColor = (day: string, hasData: boolean) => {
+  const avg = weekdayAverages[day];
+
+  if (avg === 0 || avg === undefined) return 'bg-gray-300'; // No baseline
+
+  const count = hasData ? 1 : 0;
+
+  if (count > avg) return 'bg-green-400';
+  if (count < avg) return 'bg-yellow-300';
+  return 'bg-blue-400';
+};
+  
   useEffect(() => {
     const today = new Date();
     const token = localStorage.getItem('access_token');
@@ -39,9 +80,7 @@ export default function FocusStreakOverview() {
 
           try {
             const res = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
+              headers: { Authorization: `Bearer ${token}` },
             });
 
             results.push({ date: dateStr, hasData: res.status === 200 });
@@ -86,7 +125,16 @@ export default function FocusStreakOverview() {
     fetchBlockStatus();
   }, []);
 
-  if (loading) return null;
+  useEffect(() => {
+    if (currentStreak > longestStreak) {
+      import('canvas-confetti').then((module) => {
+        module.default({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+      });
+    }
+  }, [currentStreak, longestStreak]);
+
+  if (loading) return <FocusStreakSkeleton />;
+
   if (error) return <div className="text-red-600">{error}</div>;
 
   return (
@@ -94,15 +142,17 @@ export default function FocusStreakOverview() {
       <h2 className="text-xl font-bold text-pink-700 mb-3">🧠 Focus Streak (Last 7 Days)</h2>
 
       <div className="flex justify-center flex-wrap gap-2 mb-3">
-        {blocks.map((b, i) => (
-          <div
-            key={i}
-            title={b.date}
-            className={`w-8 h-8 rounded-md ${
-              b.hasData ? 'bg-orange-400' : 'bg-gray-300'
-            } transition`}
-          />
-        ))}
+        {blocks.map((b, i) => {
+          const day = getWeekday(b.date);
+          const color = getColor(day, b.hasData);
+          return (
+            <div
+              key={i}
+              title={`${day} — ${b.date}`}
+              className={`w-8 h-8 rounded-md ${color} transition`}
+            />
+          );
+        })}
       </div>
 
       <div className="text-sm text-gray-700 mb-1">
@@ -120,6 +170,41 @@ export default function FocusStreakOverview() {
         <span>🔁 Current streak: <strong>{currentStreak}</strong> days</span>
         <span>🏆 Longest streak: <strong>{longestStreak}</strong> days</span>
       </div>
+
+      {currentStreak > 0 && (
+        <div className="mt-6 flex flex-col items-center gap-4">
+          <div
+            ref={cardRef}
+            className="w-full max-w-[500px] bg-white px-6 pt-6 pb-4 rounded-xl shadow"
+            style={{ display: 'none' }}
+          >
+            <ShareableCard
+              streak={currentStreak}
+              longest={longestStreak}
+              thisWeek={blocks.map((b) => ({
+                date: b.date,
+                count: b.hasData ? 1 : 0,
+              }))}
+            />
+          </div>
+
+          <button
+            onClick={async () => {
+              if (!cardRef.current) return;
+              cardRef.current.style.display = 'block';
+              const canvas = await html2canvas(cardRef.current);
+              cardRef.current.style.display = 'none';
+              const link = document.createElement('a');
+              link.download = 'ultradia-streak.png';
+              link.href = canvas.toDataURL();
+              link.click();
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+          >
+            Download Shareable Streak Card
+          </button>
+        </div>
+      )}
     </div>
   );
 }

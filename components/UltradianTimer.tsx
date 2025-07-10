@@ -25,6 +25,8 @@ export default function UltradianTimer({
   const [sessionEnded, setSessionEnded] = useState(false);
   const [sessionStatus, setSessionStatus] = useState('🟢 In Progress');
   const [currentCycle, setCurrentCycle] = useState(0);
+  const [stageStartTime, setStageStartTime] = useState<Date | null>(null);
+  const [lastLoggedStage, setLastLoggedStage] = useState<Phase | null>(null);
 
   useEffect(() => {
     if (sessionEnded) return;
@@ -46,7 +48,6 @@ export default function UltradianTimer({
       const elapsedMin = Math.floor((now.getTime() - start.getTime()) / 60000);
 
       let total = 0;
-      let cycle = 0;
 
       for (const seg of segments) {
         const segStart = total;
@@ -57,7 +58,21 @@ export default function UltradianTimer({
           const minutes = String(Math.floor(remainingSec / 60)).padStart(2, '0');
           const seconds = String(remainingSec % 60).padStart(2, '0');
           setTimeLeft(`${minutes}:${seconds}`);
-          setStage(seg.type);
+
+          if (stage !== seg.type) {
+            setStage(seg.type);
+            setStageStartTime(now);
+          }
+
+          if (
+            seg.type !== lastLoggedStage &&
+            (seg.type === 'peak' || seg.type === 'trough') &&
+            stageStartTime
+          ) {
+            logCycleEvent(stageStartTime, now, seg.type);
+            setLastLoggedStage(seg.type);
+          }
+
           setCurrentCycle(Math.floor((segStart - grogDuration) / (peakDuration + troughDuration)) + 1);
 
           let color = 'bg-gray-200 text-gray-800';
@@ -71,8 +86,6 @@ export default function UltradianTimer({
             }
           } else if (seg.type === 'trough') {
             color = 'bg-blue-200 text-gray-800';
-          } else if (seg.type === 'grog') {
-            color = 'bg-gray-200 text-gray-800';
           }
 
           setBgColor(color);
@@ -91,44 +104,38 @@ export default function UltradianTimer({
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount, vibeScore, sessionEnded]);
+  }, [
+    wakeTime,
+    peakDuration,
+    troughDuration,
+    grogDuration,
+    cyclesCount,
+    vibeScore,
+    sessionEnded,
+    lastLoggedStage,
+    stage,
+    stageStartTime
+  ]);
 
-  const handleEndSession = async () => {
+  const logCycleEvent = async (start: Date, end: Date, eventType: 'peak' | 'trough') => {
     const token = localStorage.getItem('access_token');
-    if (!token) return alert('Missing token');
+    if (!token) return;
 
     try {
-      const res = await fetch('http://localhost:5000/records/today', {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) throw new Error('Failed to fetch today’s record');
-      const record = await res.json();
-
-      const update = await fetch(`http://localhost:5000/records/${record.id}/`, {
-        method: 'PUT',
+      await fetch('http://localhost:5000/api/cycles/', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          session_ended_at: new Date().toISOString(),
+          event_type: eventType,
+          start_time: start.toTimeString().split(' ')[0],
+          end_time: end.toTimeString().split(' ')[0],
         }),
       });
-
-      if (!update.ok) throw new Error('Failed to update session');
-
-      setSessionEnded(true);
-      setStage('complete');
-      setTimeLeft('');
-      setSessionStatus('⏹ Session Ended');
-      setBgColor('bg-gray-300 text-gray-700');
     } catch (err) {
-      console.error('Error ending session:', err);
-      alert('Could not end session. Try again.');
+      console.error('Failed to log cycle event', err);
     }
   };
 
@@ -165,7 +172,7 @@ export default function UltradianTimer({
             {sessionStatus} • Cycle {currentCycle} of {cyclesCount}
           </span>
           <button
-            onClick={handleEndSession}
+            onClick={() => setSessionEnded(true)}
             className={`${getEndSessionStyle()} text-white px-4 py-2 rounded-lg text-sm font-semibold transition`}
           >
             🛑 End Session
