@@ -26,14 +26,41 @@ export default function UltradianTimer({
   const [sessionStatus, setSessionStatus] = useState('🟢 In Progress');
   const [currentCycle, setCurrentCycle] = useState(0);
   const [stageStartTime, setStageStartTime] = useState<Date | null>(null);
-  const [lastLoggedStage, setLastLoggedStage] = useState<Phase | null>(null);
+
+  useEffect(() => {
+    const existingSession = localStorage.getItem('ultradian_session');
+    const sessionStart = new Date();
+    sessionStart.setHours(...wakeTime.split(':').map(Number));
+
+    if (!existingSession) {
+      localStorage.setItem(
+        'ultradian_session',
+        JSON.stringify({
+          startTimestamp: sessionStart.getTime(),
+          wakeTime,
+          peakDuration,
+          troughDuration,
+          grogDuration,
+          cyclesCount,
+        })
+      );
+    }
+  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount]);
 
   useEffect(() => {
     if (sessionEnded) return;
 
-    const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number);
-    const start = new Date();
-    start.setHours(wakeHour, wakeMinute, 0, 0);
+    const session = localStorage.getItem('ultradian_session');
+    if (!session) return;
+    const {
+      startTimestamp,
+      grogDuration,
+      peakDuration,
+      troughDuration,
+      cyclesCount,
+    } = JSON.parse(session);
+
+    const start = new Date(startTimestamp);
 
     const segments: { type: Phase; duration: number }[] = [
       { type: 'grog', duration: grogDuration },
@@ -49,7 +76,8 @@ export default function UltradianTimer({
 
       let total = 0;
 
-      for (const seg of segments) {
+      for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i];
         const segStart = total;
         const segEnd = total + seg.duration;
 
@@ -65,12 +93,15 @@ export default function UltradianTimer({
           }
 
           if (
-            seg.type !== lastLoggedStage &&
             (seg.type === 'peak' || seg.type === 'trough') &&
             stageStartTime
           ) {
-            logCycleEvent(stageStartTime, now, seg.type);
-            setLastLoggedStage(seg.type);
+            const logged: number[] = JSON.parse(sessionStorage.getItem('logged_segments') || '[]');
+            if (!logged.includes(i)) {
+              logCycleEvent(stageStartTime, now, seg.type);
+              const updated = [...logged, i];
+              sessionStorage.setItem('logged_segments', JSON.stringify(updated));
+            }
           }
 
           setCurrentCycle(Math.floor((segStart - grogDuration) / (peakDuration + troughDuration)) + 1);
@@ -99,23 +130,14 @@ export default function UltradianTimer({
       setTimeLeft('');
       setSessionStatus('✅ Session Complete');
       setBgColor('bg-green-200 text-gray-800');
+      sessionStorage.removeItem('logged_segments');
+      localStorage.removeItem('ultradian_session');
     };
 
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [
-    wakeTime,
-    peakDuration,
-    troughDuration,
-    grogDuration,
-    cyclesCount,
-    vibeScore,
-    sessionEnded,
-    lastLoggedStage,
-    stage,
-    stageStartTime
-  ]);
+  }, [sessionEnded, stage, stageStartTime, vibeScore]);
 
   const logCycleEvent = async (start: Date, end: Date, eventType: 'peak' | 'trough') => {
     const token = localStorage.getItem('access_token');
@@ -172,7 +194,11 @@ export default function UltradianTimer({
             {sessionStatus} • Cycle {currentCycle} of {cyclesCount}
           </span>
           <button
-            onClick={() => setSessionEnded(true)}
+            onClick={() => {
+              setSessionEnded(true);
+              sessionStorage.removeItem('logged_segments');
+              localStorage.removeItem('ultradian_session');
+            }}
             className={`${getEndSessionStyle()} text-white px-4 py-2 rounded-lg text-sm font-semibold transition`}
           >
             🛑 End Session
