@@ -18,18 +18,23 @@ export default function UltradianPage() {
   const [vibeScore, setVibeScore] = useState<number | null>(null);
   const [showCycles, setShowCycles] = useState(false);
 
-  useEffect(() => {
-    const fetchEverything = async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) return router.push('/login');
+useEffect(() => {
+  const fetchEverything = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return router.push('/login');
 
-      try {
-        const headers = { Authorization: `Bearer ${token}` };
+    const today = new Date(); // 🟢 Move these up
+    const y = today.getFullYear();
+    const m = today.getMonth() + 1;
+    const d = today.getDate();
 
-        const userRes = await fetch('http://localhost:5000/api/users/me', { headers });
-        if (!userRes.ok) throw new Error('Unauthorized');
-        const userData = await userRes.json();
-        setUser(userData);
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const userRes = await fetch('http://localhost:5000/api/users/me', { headers });
+      if (!userRes.ok) throw new Error('Unauthorized');
+      const userData = await userRes.json();
+      setUser(userData);
 
       let wakeTimeStored = sessionStorage.getItem('wake_time');
 
@@ -46,37 +51,33 @@ export default function UltradianPage() {
       }
 
       setWakeTime(wakeTimeStored);
+      console.log('Wake time:', wakeTimeStored);
 
-        const today = new Date();
-        const y = today.getFullYear();
-        const m = today.getMonth() + 1;
-        const d = today.getDate();
+      const recordRes = await fetch(`http://localhost:5000/api/records/today?y=${y}&m=${m}&d=${d}`, {
+        headers,
+      });
+      if (!recordRes.ok) return router.push('/log');
+      const record = await recordRes.json();
+      setVibeScore(record.vibe_score ?? null);
 
-        const recordRes = await fetch(`http://localhost:5000/api/records/today?y=${y}&m=${m}&d=${d}`, {
-          headers,
-        });
-        if (!recordRes.ok) return router.push('/log');
-        const record = await recordRes.json();
-        setVibeScore(record.vibe_score ?? null);
-
-        const ultraRes = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
-          headers,
-        });
-        const data = await ultraRes.json();
-        if (ultraRes.ok) {
-          setCycles(data.cycles);
-        } else {
-          setError(data.message || 'Failed to generate cycles');
-        }
-      } catch (err) {
-        setError('Something went wrong');
-      } finally {
-        setLoading(false);
+      const ultraRes = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
+        headers,
+      });
+      const data = await ultraRes.json();
+      if (ultraRes.ok) {
+        setCycles(data.cycles);
+      } else {
+        setError(data.message || 'Failed to generate cycles');
       }
-    };
+    } catch (err) {
+      setError('Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchEverything();
-  }, [router]);
+  fetchEverything();
+}, [router]);
 
   const handleCycleComplete = async (
   start: string,
@@ -109,8 +110,9 @@ export default function UltradianPage() {
   } catch (err) {
     console.error('Error logging cycle:', err);
   }
-};
+  console.log('[Session]', localStorage.getItem('ultradian_session'));
 
+};
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10 sm:px-6 lg:px-8">

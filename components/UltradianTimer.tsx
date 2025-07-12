@@ -11,6 +11,8 @@ export default function UltradianTimer({
   grogDuration,
   cyclesCount,
   vibeScore,
+  onStageChange,
+  onCycleComplete,
 }: {
   wakeTime: string;
   peakDuration: number;
@@ -18,6 +20,8 @@ export default function UltradianTimer({
   grogDuration: number;
   cyclesCount: number;
   vibeScore: number | null;
+  onStageChange?: (stage: Phase) => void;
+  onCycleComplete?: (start: Date, end: Date, type: 'peak' | 'trough') => void;
 }) {
   const [stage, setStage] = useState<Phase>('grog');
   const [timeLeft, setTimeLeft] = useState('00:00');
@@ -25,33 +29,88 @@ export default function UltradianTimer({
   const [sessionEnded, setSessionEnded] = useState(false);
   const [sessionStatus, setSessionStatus] = useState('🟢 In Progress');
   const [currentCycle, setCurrentCycle] = useState(0);
-  const [stageStartTime, setStageStartTime] = useState<Date | null>(null);
+  const [hasSession, setHasSession] = useState(false); // ✅ NEW
 
-  useEffect(() => {
+useEffect(() => {
+  const createSessionIfNeeded = async () => {
     const existingSession = localStorage.getItem('ultradian_session');
-    const sessionStart = new Date();
-    sessionStart.setHours(...wakeTime.split(':').map(Number));
-
-    if (!existingSession) {
-      localStorage.setItem(
-        'ultradian_session',
-        JSON.stringify({
-          startTimestamp: sessionStart.getTime(),
-          wakeTime,
-          peakDuration,
-          troughDuration,
-          grogDuration,
-          cyclesCount,
-        })
-      );
+    if (existingSession) {
+      setHasSession(true);
+      return;
     }
-  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount]);
+
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number);
+    const now = new Date();
+    const sessionStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      wakeHour,
+      wakeMinute,
+      0,
+      0
+    );
+
+    const payload = {
+      wake_time: wakeTime.slice(0, 5), // ✅ critical fix!
+      peak_duration: peakDuration,
+      trough_duration: troughDuration,
+      grog_duration: grogDuration,
+      cycles_count: cyclesCount,
+      started_at: sessionStart.toISOString(),
+    };
+
+    console.log('[Creating Record]', payload);
+
+    try {
+      const res = await fetch('http://localhost:5000/api/records/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem(
+          'ultradian_session',
+          JSON.stringify({
+            user_daily_record_id: data.id,
+            startTimestamp: sessionStart.getTime(),
+            wakeTime,
+            peakDuration,
+            troughDuration,
+            grogDuration,
+            cyclesCount,
+          })
+        );
+        setHasSession(true);
+      } else {
+        console.error('[Server Error]', data);
+      }
+    } catch (err) {
+      console.error('Failed to create record', err);
+    }
+  };
+
+  createSessionIfNeeded();
+}, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount]);
 
   useEffect(() => {
     if (sessionEnded) return;
 
     const session = localStorage.getItem('ultradian_session');
-    if (!session) return;
+    if (!session) {
+      console.log('[Effect] No session, skipping tick');
+      return;
+    }
+
+    console.log('[Effect] Session found, starting tick');
     const {
       startTimestamp,
       grogDuration,
@@ -60,7 +119,7 @@ export default function UltradianTimer({
       cyclesCount,
     } = JSON.parse(session);
 
-    const start = new Date(startTimestamp);
+    const start = new Date(Number(startTimestamp));
 
     const segments: { type: Phase; duration: number }[] = [
       { type: 'grog', duration: grogDuration },
@@ -89,22 +148,27 @@ export default function UltradianTimer({
 
           if (stage !== seg.type) {
             setStage(seg.type);
-            setStageStartTime(now);
+            onStageChange?.(seg.type);
           }
 
-          if (
-            (seg.type === 'peak' || seg.type === 'trough') &&
-            stageStartTime
-          ) {
-            const logged: number[] = JSON.parse(sessionStorage.getItem('logged_segments') || '[]');
+          if (seg.type === 'grog') {
+            setCurrentCycle(0);
+          } else {
+            setCurrentCycle(
+              Math.floor((segStart - grogDuration) / (peakDuration + troughDuration)) + 1
+            );
+
+            const logged: number[] = JSON.parse(
+              sessionStorage.getItem('logged_segments') || '[]'
+            );
             if (!logged.includes(i)) {
-              logCycleEvent(stageStartTime, now, seg.type);
+              const segStartTime = new Date(start.getTime() + segStart * 60000);
+              logCycleEvent(segStartTime, now, seg.type);
+              onCycleComplete?.(segStartTime, now, seg.type);
               const updated = [...logged, i];
               sessionStorage.setItem('logged_segments', JSON.stringify(updated));
             }
           }
-
-          setCurrentCycle(Math.floor((segStart - grogDuration) / (peakDuration + troughDuration)) + 1);
 
           let color = 'bg-gray-200 text-gray-800';
           if (seg.type === 'peak') {
@@ -129,19 +193,24 @@ export default function UltradianTimer({
       setStage('complete');
       setTimeLeft('');
       setSessionStatus('✅ Session Complete');
-      setBgColor('bg-green-200 text-gray-800');
       sessionStorage.removeItem('logged_segments');
-      localStorage.removeItem('ultradian_session');
+      endSession();
     };
 
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [sessionEnded, stage, stageStartTime, vibeScore]);
+  }, [sessionEnded, hasSession]); // ✅ WATCH hasSession
 
-  const logCycleEvent = async (start: Date, end: Date, eventType: 'peak' | 'trough') => {
+  const logCycleEvent = async (
+    start: Date,
+    end: Date,
+    eventType: 'peak' | 'trough'
+  ) => {
     const token = localStorage.getItem('access_token');
-    if (!token) return;
+    const session = JSON.parse(localStorage.getItem('ultradian_session') || '{}');
+    const recordId = session.user_daily_record_id;
+    if (!token || !recordId) return;
 
     try {
       await fetch('http://localhost:5000/api/cycles/', {
@@ -151,6 +220,7 @@ export default function UltradianTimer({
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          user_daily_record_id: recordId,
           event_type: eventType,
           start_time: start.toTimeString().split(' ')[0],
           end_time: end.toTimeString().split(' ')[0],
@@ -158,6 +228,29 @@ export default function UltradianTimer({
       });
     } catch (err) {
       console.error('Failed to log cycle event', err);
+    }
+  };
+
+  const endSession = async () => {
+    const token = localStorage.getItem('access_token');
+    const session = JSON.parse(localStorage.getItem('ultradian_session') || '{}');
+    const recordId = session.user_daily_record_id;
+    if (!token || !recordId) return;
+
+    try {
+      await fetch(`http://localhost:5000/api/records/${recordId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ended_at: new Date().toISOString(),
+        }),
+      });
+      localStorage.removeItem('ultradian_session');
+    } catch (err) {
+      console.error('Failed to end session', err);
     }
   };
 
@@ -197,7 +290,7 @@ export default function UltradianTimer({
             onClick={() => {
               setSessionEnded(true);
               sessionStorage.removeItem('logged_segments');
-              localStorage.removeItem('ultradian_session');
+              endSession();
             }}
             className={`${getEndSessionStyle()} text-white px-4 py-2 rounded-lg text-sm font-semibold transition`}
           >
