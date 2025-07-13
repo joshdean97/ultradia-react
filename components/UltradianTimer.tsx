@@ -33,11 +33,21 @@ export default function UltradianTimer({
 
 useEffect(() => {
   const createSessionIfNeeded = async () => {
-    const existingSession = localStorage.getItem('ultradian_session');
-    if (existingSession) {
+  const existingSession = localStorage.getItem('ultradian_session');
+  if (existingSession) {
+    const parsed = JSON.parse(existingSession);
+    const sessionDate = new Date(parsed.startTimestamp).toDateString();
+    const today = new Date().toDateString();
+
+    if (sessionDate === today) {
       setHasSession(true);
       return;
+    } else {
+      // clear old session
+      localStorage.removeItem('ultradian_session');
+      sessionStorage.removeItem('logged_segments');
     }
+  }
 
     const token = localStorage.getItem('access_token');
     if (!token) return;
@@ -202,34 +212,41 @@ useEffect(() => {
     return () => clearInterval(interval);
   }, [sessionEnded, hasSession]); // ✅ WATCH hasSession
 
-  const logCycleEvent = async (
-    start: Date,
-    end: Date,
-    eventType: 'peak' | 'trough'
-  ) => {
-    const token = localStorage.getItem('access_token');
-    const session = JSON.parse(localStorage.getItem('ultradian_session') || '{}');
-    const recordId = session.user_daily_record_id;
-    if (!token || !recordId) return;
+const formatTime = (date: Date) => {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+};
 
-    try {
-      await fetch('http://localhost:5000/api/cycles/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_daily_record_id: recordId,
-          event_type: eventType,
-          start_time: start.toTimeString().split(' ')[0],
-          end_time: end.toTimeString().split(' ')[0],
-        }),
-      });
-    } catch (err) {
-      console.error('Failed to log cycle event', err);
-    }
-  };
+const logCycleEvent = async (
+  start: Date,
+  end: Date,
+  eventType: 'peak' | 'trough'
+) => {
+  const token = localStorage.getItem('access_token');
+  const session = JSON.parse(localStorage.getItem('ultradian_session') || '{}');
+  const recordId = session.user_daily_record_id;
+  if (!token || !recordId) return;
+
+  try {
+    await fetch('http://localhost:5000/api/cycles/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        user_daily_record_id: recordId,
+        event_type: eventType,
+        start_time: formatTime(start),
+        end_time: formatTime(end),
+      }),
+    });
+  } catch (err) {
+    console.error('Failed to log cycle event', err);
+  }
+};
 
   const endSession = async () => {
     const token = localStorage.getItem('access_token');
