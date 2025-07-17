@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Pencil } from 'lucide-react';
+import { trackEvent } from '@/lib/track';
+
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<any>({});
@@ -51,6 +53,8 @@ export default function ProfilePage() {
       });
       if (res.ok) {
         setStatus('Saved!');
+        trackEvent('profile_updated', { ...profile });
+
         setTimeout(() => setStatus(''), 2000);
       }
     } catch (err) {
@@ -73,6 +77,8 @@ export default function ProfilePage() {
       if (res.ok) {
         localStorage.removeItem("access_token");
         window.location.href = '/login';
+        trackEvent('account_deleted');
+
       }
     } catch (err) {
       console.error("Error deleting profile", err);

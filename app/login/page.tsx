@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { trackEvent } from '@/lib/track';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -57,6 +58,7 @@ export default function LoginPage() {
         localStorage.setItem('access_token', data.access_token);
 
         toast.success('Login successful!');
+        trackEvent('login_success', { email });
 
         const r = await fetch('http://localhost:5000/api/records/today/', {
           headers: { Authorization: `Bearer ${data.access_token}` },
@@ -66,6 +68,7 @@ export default function LoginPage() {
       } else {
         toast.error(data.error || 'Login failed');
         setError(data.error || 'Login failed');
+        trackEvent('login_error', { error: data.error });
       }
     } catch (err) {
       toast.error('Something went wrong');

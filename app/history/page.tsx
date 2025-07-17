@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import React from 'react';
 import FocusStreakOverview from '@/components/FocusStreakOverview';
 import TableSkeleton from '@/components/TableSkeleton';
+import { trackEvent } from '@/lib/track';
+
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -52,6 +54,8 @@ if (!Array.isArray(rawRecords)) {
         );
 
         setRecords(sortedRecords);
+        trackEvent('view_history', { recordCount: sortedRecords.length });
+
 
         if (sortedRecords.length > 1) {
           const recent = sortedRecords.slice(1, 8).map((r: any) => r.hrv).filter((h: any) => h != null);
@@ -87,6 +91,8 @@ if (!Array.isArray(rawRecords)) {
     }
 
     sessionStorage.setItem('wake_time', record.wake_time);
+    trackEvent('view_past_cycle', { date: record.date });
+
     router.push(`/ultradian?y=${y}&m=${m}&d=${d}`);
   };
 

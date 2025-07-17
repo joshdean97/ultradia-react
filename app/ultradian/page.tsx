@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UltradianTimer from '@/components/UltradianTimer';
 import CircadianPromptCard from '@/components/CircadianPromptCard';
+import OnboardingModal from '@/components/OnboardingModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import VibeScoreCard from '@/components/VibeScoreCard';
 
@@ -17,6 +18,13 @@ export default function UltradianPage() {
   const [currentStage, setCurrentStage] = useState<'grog' | 'peak' | 'trough' | 'complete'>('grog');
   const [vibeScore, setVibeScore] = useState<number | null>(null);
   const [showCycles, setShowCycles] = useState(false);
+
+const [showOnboarding, setShowOnboarding] = useState(false);
+
+useEffect(() => {
+  const seen = localStorage.getItem('onboarding_complete');
+  if (!seen) setShowOnboarding(true);
+}, []);
 
 useEffect(() => {
   const fetchEverything = async () => {
@@ -116,6 +124,7 @@ useEffect(() => {
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10 sm:px-6 lg:px-8">
+      {showOnboarding && <OnboardingModal onClose={() => setShowOnboarding(false)} />}
       <div className="max-w-3xl mx-auto bg-white px-6 py-10 rounded-2xl shadow-md space-y-10">
         <h1 className="text-3xl font-bold text-center text-blue-600">Ultradian Rhythm</h1>
 

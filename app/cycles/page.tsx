@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { trackEvent } from '@/lib/track';
+
 
 export default function CycleSelectorPage() {
   const router = useRouter();
@@ -46,6 +48,7 @@ export default function CycleSelectorPage() {
 
   const handleSubmit = async () => {
     setSubmitted(true);
+    trackEvent('start_rhythm', { selectedCycles });
     const token = localStorage.getItem("access_token");
 
     const res = await fetch('http://localhost:5000/api/users/me', {
@@ -147,6 +150,7 @@ export default function CycleSelectorPage() {
               <button
                 onClick={() => {
                   setSelectedCycles(recommended(vibeScore));
+                  trackEvent('use_suggested_cycles', { recommended: recommended(vibeScore) });
                   handleSubmit();
                 }}
                 className="w-full border border-blue-600 text-blue-600 py-2 rounded transition hover:bg-blue-50"

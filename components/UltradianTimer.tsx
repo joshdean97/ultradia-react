@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { trackEvent } from '@/lib/track';
 
 type Phase = 'grog' | 'peak' | 'trough' | 'complete';
 
@@ -100,6 +101,7 @@ useEffect(() => {
           })
         );
         setHasSession(true);
+        trackEvent('session_start', { wakeTime, cyclesCount, vibeScore });
       } else {
         console.error('[Server Error]', data);
       }
@@ -159,6 +161,7 @@ useEffect(() => {
           if (stage !== seg.type) {
             setStage(seg.type);
             onStageChange?.(seg.type);
+            trackEvent('stage_change', { stage: seg.type });
           }
 
           if (seg.type === 'grog') {
@@ -174,6 +177,12 @@ useEffect(() => {
             if (!logged.includes(i)) {
               const segStartTime = new Date(start.getTime() + segStart * 60000);
               logCycleEvent(segStartTime, now, seg.type);
+              trackEvent('cycle_logged', {
+              type: seg.type,
+              start: segStartTime.toISOString(),
+              end: now.toISOString(),
+              cycle: currentCycle,
+            });
               onCycleComplete?.(segStartTime, now, seg.type);
               const updated = [...logged, i];
               sessionStorage.setItem('logged_segments', JSON.stringify(updated));
@@ -288,6 +297,7 @@ const logCycleEvent = async (
     return 'bg-red-600 hover:bg-red-700';
   };
 
+  
   return (
     <div className={`rounded-xl sm:rounded-2xl shadow text-center p-8 transition-all ${bgColor}`}>
       <h2 className="text-3xl font-bold mb-2">{getStageLabel()}</h2>
@@ -306,6 +316,7 @@ const logCycleEvent = async (
           <button
             onClick={() => {
               setSessionEnded(true);
+              trackEvent('session_end', { completedCycles: currentCycle });
               sessionStorage.removeItem('logged_segments');
               endSession();
             }}

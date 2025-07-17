@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { trackEvent } from '@/lib/track';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,6 +29,8 @@ export default function RegisterPage() {
         return;
       }
 
+      trackEvent('register_success', { email });
+
       // 🔐 Auto-login after registration
       const loginRes = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
@@ -39,6 +42,8 @@ export default function RegisterPage() {
 
       if (loginRes.ok && loginData.access_token) {
         localStorage.setItem('access_token', loginData.access_token);
+
+        trackEvent('auto_login_post_register', { email });
 
         // check if user already logged a record today
         const token = loginData.access_token;
@@ -55,6 +60,7 @@ export default function RegisterPage() {
 
     } catch (err) {
       setError('Something went wrong');
+      trackEvent('register_error', { error: err?.toString() });
     }
   };
 
