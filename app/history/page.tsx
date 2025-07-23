@@ -6,6 +6,8 @@ import React from 'react';
 import FocusStreakOverview from '@/components/FocusStreakOverview';
 import TableSkeleton from '@/components/TableSkeleton';
 import { trackEvent } from '@/lib/track';
+import { API_BASE_URL } from '@/lib/api';
+
 
 
 export default function HistoryPage() {
@@ -21,7 +23,7 @@ export default function HistoryPage() {
   const fetchRecords = async () => {
     const token = localStorage.getItem("access_token");
     try {
-      const res = await fetch('http://localhost:5000/api/records/all', {
+      const res = await fetch(`${API_BASE_URL}/api/records/all`, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -79,7 +81,7 @@ if (!Array.isArray(rawRecords)) {
     const m = date.getMonth() + 1;
     const d = date.getDate();
 
-    const res = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
+    const res = await fetch(`${API_BASE_URL}/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

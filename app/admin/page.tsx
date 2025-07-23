@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/lib/api';
+
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<{ users: number; records: number; leads: number } | null>(null);
@@ -16,7 +18,7 @@ export default function AdminDashboard() {
 
     const fetchStats = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/admin/', {
+        const res = await fetch(`${API_BASE_URL}/api/admin/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

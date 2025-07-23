@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/lib/api';
+
 import UltradianTimer from '@/components/UltradianTimer';
 import CircadianPromptCard from '@/components/CircadianPromptCard';
 import OnboardingModal from '@/components/OnboardingModal';
@@ -18,133 +20,125 @@ export default function UltradianPage() {
   const [currentStage, setCurrentStage] = useState<'grog' | 'peak' | 'trough' | 'complete'>('grog');
   const [vibeScore, setVibeScore] = useState<number | null>(null);
   const [showCycles, setShowCycles] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    const seen = localStorage.getItem('onboarding_complete');
+    if (!seen) setShowOnboarding(true);
+  }, []);
 
-useEffect(() => {
-  const seen = localStorage.getItem('onboarding_complete');
-  if (!seen) setShowOnboarding(true);
-}, []);
+  useEffect(() => {
+    const fetchEverything = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) return router.push('/login');
 
-useEffect(() => {
-  const fetchEverything = async () => {
-    const token = localStorage.getItem('access_token');
-    if (!token) return router.push('/login');
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = today.getMonth() + 1;
+      const d = today.getDate();
 
-    const today = new Date(); // 🟢 Move these up
-    const y = today.getFullYear();
-    const m = today.getMonth() + 1;
-    const d = today.getDate();
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
 
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
+        const userRes = await fetch(`${API_BASE_URL}/api/users/me`, { headers });
+        if (!userRes.ok) throw new Error('Unauthorized');
+        const userData = await userRes.json();
+        console.log('[DEBUG] user:', userData);
+        setUser(userData);
 
-      const userRes = await fetch('http://localhost:5000/api/users/me', { headers });
-      if (!userRes.ok) throw new Error('Unauthorized');
-      const userData = await userRes.json();
-      setUser(userData);
+        const vibeRes = await fetch(`${API_BASE_URL}/api/vibe-score/`, { headers });
+        if (!vibeRes.ok) throw new Error('Failed to fetch vibe score');
+        const vibeData = await vibeRes.json();
+        console.log('[DEBUG] vibeData:', vibeData);
+        setVibeScore(vibeData.score);
 
-      let wakeTimeStored = sessionStorage.getItem('wake_time');
+        let wakeTimeStored = sessionStorage.getItem('wake_time');
+        if (!wakeTimeStored) {
+          const recordRes = await fetch(`${API_BASE_URL}/api/records/today?y=${y}&m=${m}&d=${d}`, {
+            headers,
+          });
+          if (!recordRes.ok) return router.push('/log');
+          const record = await recordRes.json();
+          wakeTimeStored = record.wake_time ?? '';
+          sessionStorage.setItem('wake_time', wakeTimeStored);
+        }
+        setWakeTime(wakeTimeStored);
 
-      if (!wakeTimeStored) {
-        const recordRes = await fetch(`http://localhost:5000/api/records/today?y=${y}&m=${m}&d=${d}`, {
+        const ultraRes = await fetch(`${API_BASE_URL}/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
           headers,
         });
-
-        if (!recordRes.ok) return router.push('/log');
-
-        const record = await recordRes.json();
-        wakeTimeStored = record.wake_time;
-        sessionStorage.setItem('wake_time', wakeTimeStored);
+        const data = await ultraRes.json();
+        if (ultraRes.ok) {
+          setCycles(data.cycles);
+        } else {
+          setError(data.message || 'Failed to generate cycles');
+        }
+      } catch (err) {
+        console.error('[ERROR]', err);
+        setError('Something went wrong');
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setWakeTime(wakeTimeStored);
-      console.log('Wake time:', wakeTimeStored);
+    fetchEverything();
+  }, [router]);
 
-      const recordRes = await fetch(`http://localhost:5000/api/records/today?y=${y}&m=${m}&d=${d}`, {
-        headers,
+  const handleCycleComplete = async (
+    start: string,
+    end: string,
+    eventType: 'peak' | 'trough'
+  ) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/ultradian`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ start_time: start, end_time: end, event_type: eventType }),
       });
-      if (!recordRes.ok) return router.push('/log');
-      const record = await recordRes.json();
-      setVibeScore(record.vibe_score ?? null);
 
-      const ultraRes = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
-        headers,
-      });
-      const data = await ultraRes.json();
-      if (ultraRes.ok) {
-        setCycles(data.cycles);
+      if (!res.ok) {
+        const err = await res.json();
+        console.warn('Failed to log cycle:', err);
       } else {
-        setError(data.message || 'Failed to generate cycles');
+        console.log(`✅ Logged ${eventType} event`);
       }
     } catch (err) {
-      setError('Something went wrong');
-    } finally {
-      setLoading(false);
+      console.error('Error logging cycle:', err);
     }
   };
 
-  fetchEverything();
-}, [router]);
-
-  const handleCycleComplete = async (
-  start: string,
-  end: string,
-  eventType: 'peak' | 'trough'
-) => {
-  const token = localStorage.getItem('access_token');
-  if (!token) return;
-
-  try {
-    const res = await fetch('http://localhost:5000/api/cycles', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        start_time: start,
-        end_time: end,
-        event_type: eventType,
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      console.warn('Failed to log cycle:', err);
-    } else {
-      console.log(`✅ Logged ${eventType} event`);
-    }
-  } catch (err) {
-    console.error('Error logging cycle:', err);
-  }
-  console.log('[Session]', localStorage.getItem('ultradian_session'));
-
-};
-
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10 sm:px-6 lg:px-8">
-      {showOnboarding && <OnboardingModal onClose={() => setShowOnboarding(false)} />}
+      {showOnboarding && (
+        <OnboardingModal onClose={() => setShowOnboarding(false)} />
+      )}
+
       <div className="max-w-3xl mx-auto bg-white px-6 py-10 rounded-2xl shadow-md space-y-10">
         <h1 className="text-3xl font-bold text-center text-blue-600">Ultradian Rhythm</h1>
-
-        <VibeScoreCard />
 
         {loading && <p className="text-center text-gray-500">Loading...</p>}
         {error && <p className="text-center text-red-600">{error}</p>}
 
-        {!loading && !error && (
+        {!loading && <VibeScoreCard />}
+
+        {!loading && user && vibeScore !== null && (
           <>
-          <UltradianTimer
-            wakeTime={wakeTime}
-            peakDuration={user.peak_duration}
-            troughDuration={user.trough_duration}
-            grogDuration={user.grog_duration}
-            cyclesCount={user.cycles_count}
-            vibeScore={vibeScore}
-            onStageChange={setCurrentStage}
-            onCycleComplete={handleCycleComplete}
-          />
+            <UltradianTimer
+              wakeTime={wakeTime}
+              peakDuration={user.peak_duration}
+              troughDuration={user.trough_duration}
+              grogDuration={user.grog_duration}
+              cyclesCount={user.cycles_count}
+              vibeScore={vibeScore}
+              onStageChange={setCurrentStage}
+              onCycleComplete={handleCycleComplete}
+            />
 
             <CircadianPromptCard phase={currentStage} vibeScore={vibeScore} />
 
@@ -180,17 +174,17 @@ useEffect(() => {
                 )}
               </AnimatePresence>
             </div>
-
-            <div className="text-center">
-              <button
-                onClick={() => router.push('/history')}
-                className="mt-10 text-blue-600 hover:underline text-sm"
-              >
-                View Daily Record History →
-              </button>
-            </div>
           </>
         )}
+
+        <div className="text-center">
+          <button
+            onClick={() => router.push('/history')}
+            className="mt-10 text-blue-600 hover:underline text-sm"
+          >
+            View Daily Record History →
+          </button>
+        </div>
       </div>
     </main>
   );

@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { API_BASE_URL } from '@/lib/api';
+
 
 export default function GoogleCallback() {
   const router = useRouter();
@@ -20,7 +22,7 @@ export default function GoogleCallback() {
       // Optional: check if a record exists before routing
       const checkRecord = async () => {
         try {
-          const res = await fetch('http://localhost:5000/api/records/today/', {
+          const res = await fetch(`${API_BASE_URL}/api/records/today/`, {
             headers: { Authorization: `Bearer ${token}` },
           });
 

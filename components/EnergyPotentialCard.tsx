@@ -35,7 +35,7 @@ export default function EnergyPotentialCard() {
       if (!token) return setError("No token found");
 
       try {
-        const res = await fetch("http://localhost:5000/api/energy-potential/", {
+        const res = await fetch("${API_BASE_URL}/api/energy-potential/", {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,

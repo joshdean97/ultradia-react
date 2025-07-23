@@ -16,43 +16,67 @@ const getTimeOfDay = (): 'early_morning' | 'late_morning' | 'afternoon' | 'eveni
   return 'evening';
 };
 
+
 const getVibeStatus = (vibe: number | null): 'high' | 'balanced' | 'low' => {
-  if (vibe === null) return 'balanced';
-  if (vibe >= 4) return 'high';
-  if (vibe >= 2) return 'balanced';
+  if (vibe === null || isNaN(vibe)) return 'balanced';
+  if (vibe >= 85) return 'high';
+  if (vibe >= 50) return 'balanced';
   return 'low';
 };
 
-const getPrompt = (phase: string, timeOfDay: string, energy: string) => {
+const getPrompt = (
+  phase: 'grog' | 'peak' | 'trough' | 'complete',
+  timeOfDay: 'early_morning' | 'late_morning' | 'afternoon' | 'evening',
+  energy: 'high' | 'balanced' | 'low'
+) => {
   if (phase === 'grog') {
-    return '☁️ Ease into the day with light movement, stretching, or journaling.';
+    if (timeOfDay === 'early_morning') {
+      return '☁️ Ease into the day with sunlight, hydration, and gentle movement. A mindful start sets the tone.';
+    }
+    return '🌤️ Still feeling groggy? Get sunlight on your skin and move your body — rhythm reset incoming.';
   }
 
   if (phase === 'peak') {
     if (energy === 'high') {
-      return '💪 Now’s the time for deep focus, creative sprints, or intense training like weightlifting or HIIT.';
+      if (timeOfDay === 'late_morning') {
+        return '🧠 High-output window: write, plan, strategize, or sprint on creative work.';
+      }
+      if (timeOfDay === 'afternoon') {
+        return '💪 Afternoon surge: use it for performance tasks or high-leverage decision-making.';
+      }
+      return '⚡ Energy’s high — use this peak to ship something meaningful.';
     }
+
     if (energy === 'balanced') {
-      return '⚖️ Ideal window for moderate cognitive work or a solid workout like a run, brisk walk, or circuit.';
+      return '⚖️ Great time for focused tasks, moderate workouts, or social flow sessions.';
     }
-    return '📘 Use this peak to learn gently, organize tasks, or do light movement like yoga.';
+
+    return '📘 Use this peak gently: catch up on light reading, prep your to-dos, or do mobility work.';
   }
 
   if (phase === 'trough') {
     if (timeOfDay === 'afternoon') {
       if (energy === 'high') {
-        return '🧘 Recharge with a walk outdoors or low-impact activity like swimming or stretching.';
+        return '🧘 Afternoon recharge: go for a walk, stretch out, or find a quiet flow zone.';
       }
-      return '🪷 Afternoon dip — perfect time for a nap, nature, or meditation.';
+      return '🪷 Afternoon dip — perfect for a nap, nature exposure, or a short NSDR session.';
     }
+
     if (energy === 'low') {
-      return '📴 Wind down with calming activities or gentle chores. Recovery is the priority now.';
+      return '📴 Wind down with calming routines or restorative chores. Protect recovery time.';
     }
-    return '☕ Consider slow, mindful breaks or mobility work to restore energy.';
+
+    return '☕ Consider a slow, mindful break. No stimulation — just stillness and space.';
   }
 
   if (phase === 'complete') {
-    return '✅ You’ve completed your rhythm for today. Reflect, rest, or take a gentle walk to unwind.';
+    if (energy === 'high') {
+      return '🎯 Rhythm complete — but your energy’s still high. Reflect, journal, or use this bonus flow with intention.';
+    }
+    if (energy === 'low') {
+      return '🛌 Rhythm complete. Time to restore: no screens, soft light, and rest.';
+    }
+    return '✅ You’ve completed your rhythm for today. Take a gentle walk, reflect, or begin unwinding.';
   }
 
   return '💤 No guidance available.';
@@ -60,6 +84,7 @@ const getPrompt = (phase: string, timeOfDay: string, energy: string) => {
 
 export default function CircadianPromptCard({ phase, vibeScore }: Props) {
   const [timeOfDay, setTimeOfDay] = useState(getTimeOfDay());
+  
   const pathname = usePathname();
 
   const vibeStatus = getVibeStatus(typeof vibeScore === 'string' ? parseFloat(vibeScore) : vibeScore);
@@ -88,6 +113,8 @@ export default function CircadianPromptCard({ phase, vibeScore }: Props) {
   }, []);
 
   const prompt = getPrompt(phase, timeOfDay, vibeStatus);
+  console.log('[DEBUG] Hour:', '→', getTimeOfDay());
+
 
   return (
     <div className={`border-l-4 p-4 rounded-md shadow ${promptStyle}`}>

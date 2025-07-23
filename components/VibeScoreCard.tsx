@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
+import {API_BASE_URL} from '@/lib/api';
 
 export default function VibeScoreCard() {
   const [score, setScore] = useState<number | null>(null);
@@ -22,7 +23,7 @@ export default function VibeScoreCard() {
       }
 
       try {
-        const res = await fetch('http://localhost:5000/api/vibe-score/', {
+        const res = await fetch(`${API_BASE_URL}/api/vibe-score/`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

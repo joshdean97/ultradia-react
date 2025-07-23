@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { API_BASE_URL } from '@/lib/api';
+
 
 type AnalyticsEvent = {
   event: string;
@@ -19,7 +21,7 @@ export default function AdminAnalyticsPage() {
 
     const fetchEvents = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/admin/analytics', {
+        const res = await fetch(`${API_BASE_URL}/api/admin/analytics`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error('Failed to fetch');

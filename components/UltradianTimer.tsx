@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { trackEvent } from '@/lib/track';
+import { API_BASE_URL } from '@/lib/api';
 
 type Phase = 'grog' | 'peak' | 'trough' | 'complete';
 
@@ -30,88 +31,87 @@ export default function UltradianTimer({
   const [sessionEnded, setSessionEnded] = useState(false);
   const [sessionStatus, setSessionStatus] = useState('🟢 In Progress');
   const [currentCycle, setCurrentCycle] = useState(0);
-  const [hasSession, setHasSession] = useState(false); // ✅ NEW
+  const [hasSession, setHasSession] = useState(false);
 
-useEffect(() => {
-  const createSessionIfNeeded = async () => {
-  const existingSession = localStorage.getItem('ultradian_session');
-  if (existingSession) {
-    const parsed = JSON.parse(existingSession);
-    const sessionDate = new Date(parsed.startTimestamp).toDateString();
-    const today = new Date().toDateString();
+  useEffect(() => {
+    const createSessionIfNeeded = async () => {
+      const existingSession = localStorage.getItem('ultradian_session');
+      if (existingSession) {
+        const parsed = JSON.parse(existingSession);
+        const sessionDate = new Date(parsed.startTimestamp).toDateString();
+        const today = new Date().toDateString();
 
-    if (sessionDate === today) {
-      setHasSession(true);
-      return;
-    } else {
-      // clear old session
-      localStorage.removeItem('ultradian_session');
-      sessionStorage.removeItem('logged_segments');
-    }
-  }
+        if (sessionDate === today) {
+          setHasSession(true);
+          return;
+        } else {
+          localStorage.removeItem('ultradian_session');
+          sessionStorage.removeItem('logged_segments');
+        }
+      }
 
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
 
-    const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number);
-    const now = new Date();
-    const sessionStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      wakeHour,
-      wakeMinute,
-      0,
-      0
-    );
+      const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number);
+      const now = new Date();
+      const sessionStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        wakeHour,
+        wakeMinute,
+        0,
+        0
+      );
 
-    const payload = {
-      wake_time: wakeTime.slice(0, 5), // ✅ critical fix!
-      peak_duration: peakDuration,
-      trough_duration: troughDuration,
-      grog_duration: grogDuration,
-      cycles_count: cyclesCount,
-      started_at: sessionStart.toISOString(),
+      const payload = {
+        wake_time: wakeTime.slice(0, 5),
+        peak_duration: peakDuration,
+        trough_duration: troughDuration,
+        grog_duration: grogDuration,
+        cycles_count: cyclesCount,
+        started_at: sessionStart.toISOString(),
+      };
+
+      console.log('[Creating Record]', payload);
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/records/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem(
+            'ultradian_session',
+            JSON.stringify({
+              user_daily_record_id: data.id,
+              startTimestamp: sessionStart.getTime(),
+              wakeTime,
+              peakDuration,
+              troughDuration,
+              grogDuration,
+              cyclesCount,
+            })
+          );
+          setHasSession(true);
+          trackEvent('session_start', { wakeTime, cyclesCount, vibeScore });
+        } else {
+          console.error('[Server Error]', data);
+        }
+      } catch (err) {
+        console.error('Failed to create record', err);
+      }
     };
 
-    console.log('[Creating Record]', payload);
-
-    try {
-      const res = await fetch('http://localhost:5000/api/records/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        localStorage.setItem(
-          'ultradian_session',
-          JSON.stringify({
-            user_daily_record_id: data.id,
-            startTimestamp: sessionStart.getTime(),
-            wakeTime,
-            peakDuration,
-            troughDuration,
-            grogDuration,
-            cyclesCount,
-          })
-        );
-        setHasSession(true);
-        trackEvent('session_start', { wakeTime, cyclesCount, vibeScore });
-      } else {
-        console.error('[Server Error]', data);
-      }
-    } catch (err) {
-      console.error('Failed to create record', err);
-    }
-  };
-
-  createSessionIfNeeded();
-}, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount]);
+    createSessionIfNeeded();
+  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount]);
 
   useEffect(() => {
     if (sessionEnded) return;
@@ -161,7 +161,6 @@ useEffect(() => {
           if (stage !== seg.type) {
             setStage(seg.type);
             onStageChange?.(seg.type);
-            trackEvent('stage_change', { stage: seg.type });
           }
 
           if (seg.type === 'grog') {
@@ -178,11 +177,11 @@ useEffect(() => {
               const segStartTime = new Date(start.getTime() + segStart * 60000);
               logCycleEvent(segStartTime, now, seg.type);
               trackEvent('cycle_logged', {
-              type: seg.type,
-              start: segStartTime.toISOString(),
-              end: now.toISOString(),
-              cycle: currentCycle,
-            });
+                type: seg.type,
+                start: segStartTime.toISOString(),
+                end: now.toISOString(),
+                cycle: currentCycle,
+              });
               onCycleComplete?.(segStartTime, now, seg.type);
               const updated = [...logged, i];
               sessionStorage.setItem('logged_segments', JSON.stringify(updated));
@@ -210,6 +209,7 @@ useEffect(() => {
       }
 
       setStage('complete');
+      onStageChange?.('complete');
       setTimeLeft('');
       setSessionStatus('✅ Session Complete');
       sessionStorage.removeItem('logged_segments');
@@ -219,43 +219,43 @@ useEffect(() => {
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [sessionEnded, hasSession]); // ✅ WATCH hasSession
+  }, [sessionEnded, hasSession]);
 
-const formatTime = (date: Date) => {
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  return `${hours}:${minutes}:${seconds}`;
-};
+  const formatTime = (date: Date) => {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+  };
 
-const logCycleEvent = async (
-  start: Date,
-  end: Date,
-  eventType: 'peak' | 'trough'
-) => {
-  const token = localStorage.getItem('access_token');
-  const session = JSON.parse(localStorage.getItem('ultradian_session') || '{}');
-  const recordId = session.user_daily_record_id;
-  if (!token || !recordId) return;
+  const logCycleEvent = async (
+    start: Date,
+    end: Date,
+    eventType: 'peak' | 'trough'
+  ) => {
+    const token = localStorage.getItem('access_token');
+    const session = JSON.parse(localStorage.getItem('ultradian_session') || '{}');
+    const recordId = session.user_daily_record_id;
+    if (!token || !recordId) return;
 
-  try {
-    await fetch('http://localhost:5000/api/cycles/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        user_daily_record_id: recordId,
-        event_type: eventType,
-        start_time: formatTime(start),
-        end_time: formatTime(end),
-      }),
-    });
-  } catch (err) {
-    console.error('Failed to log cycle event', err);
-  }
-};
+    try {
+      await fetch(`${API_BASE_URL}/api/cycles/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_daily_record_id: recordId,
+          event_type: eventType,
+          start_time: formatTime(start),
+          end_time: formatTime(end),
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to log cycle event', err);
+    }
+  };
 
   const endSession = async () => {
     const token = localStorage.getItem('access_token');
@@ -264,7 +264,7 @@ const logCycleEvent = async (
     if (!token || !recordId) return;
 
     try {
-      await fetch(`http://localhost:5000/api/records/${recordId}`, {
+      await fetch(`${API_BASE_URL}/api/records/${recordId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -297,7 +297,6 @@ const logCycleEvent = async (
     return 'bg-red-600 hover:bg-red-700';
   };
 
-  
   return (
     <div className={`rounded-xl sm:rounded-2xl shadow text-center p-8 transition-all ${bgColor}`}>
       <h2 className="text-3xl font-bold mb-2">{getStageLabel()}</h2>

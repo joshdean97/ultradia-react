@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { trackEvent } from '@/lib/track';
+import { API_BASE_URL } from '@/lib/api';
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,12 +22,12 @@ export default function LoginPage() {
       if (!token) return setCheckingSession(false);
 
       try {
-        const res = await fetch('http://localhost:5000/api/users/me', {
+        const res = await fetch(`${API_BASE_URL}/api/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (res.ok) {
-          const r = await fetch('http://localhost:5000/api/records/today/', {
+          const r = await fetch(`${API_BASE_URL}/api/records/today/`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           router.push(r.ok ? '/ultradian' : '/log');
@@ -46,7 +48,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -60,7 +62,7 @@ export default function LoginPage() {
         toast.success('Login successful!');
         trackEvent('login_success', { email });
 
-        const r = await fetch('http://localhost:5000/api/records/today/', {
+        const r = await fetch(`${API_BASE_URL}/api/records/today/`, {
           headers: { Authorization: `Bearer ${data.access_token}` },
         });
 
@@ -142,7 +144,7 @@ export default function LoginPage() {
         <div className="text-center">
           <p className="text-sm text-gray-500 my-2">or</p>
           <a
-            href="http://localhost:5000/api/auth/login/google"
+            href="${API_BASE_URL}/api/auth/login/google"
             className="flex items-center justify-center gap-2 w-full bg-white text-gray-800 border border-gray-300 py-2 rounded-md hover:bg-gray-100 transition shadow-sm"
           >
             <svg

@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { User, LogOut, Clock, Zap, Activity } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/api';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -29,7 +29,7 @@ export default function Navbar() {
       if (!token) return;
 
       try {
-        const res = await fetch('http://localhost:5000/api/users/me', {
+        const res = await fetch(`${API_BASE_URL}/api/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

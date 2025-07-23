@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/lib/api';
+
 
 export default function LogRecordPage() {
   const router = useRouter();
@@ -17,7 +19,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   const token = localStorage.getItem("access_token");
 
   try {
-    const todayRes = await fetch('http://localhost:5000/api/records/today', {
+    const todayRes = await fetch(`${API_BASE_URL}/api/records/today`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -33,7 +35,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     if (todayRes.ok) {
       const existing = await todayRes.json();
-      await fetch(`http://localhost:5000/api/records/${existing.id}/`, {
+      await fetch(`${API_BASE_URL}/api/records/${existing.id}/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -42,7 +44,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         body: JSON.stringify(body),
       });
     } else {
-      await fetch('http://localhost:5000/api/records/', {
+      await fetch(`${API_BASE_URL}/api/records/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

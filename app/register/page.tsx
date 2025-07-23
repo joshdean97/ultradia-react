@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/track';
+import { API_BASE_URL } from '@/lib/api';
+
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -16,7 +18,7 @@ export default function RegisterPage() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
@@ -32,7 +34,7 @@ export default function RegisterPage() {
       trackEvent('register_success', { email });
 
       // 🔐 Auto-login after registration
-      const loginRes = await fetch('http://localhost:5000/api/auth/login', {
+      const loginRes = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -47,7 +49,7 @@ export default function RegisterPage() {
 
         // check if user already logged a record today
         const token = loginData.access_token;
-        const recordRes = await fetch('http://localhost:5000/api/records/today/', {
+        const recordRes = await fetch(`${API_BASE_URL}/api/records/today/`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Pencil } from 'lucide-react';
 import { trackEvent } from '@/lib/track';
+import { API_BASE_URL } from '@/lib/api';
+
 
 
 export default function ProfilePage() {
@@ -17,7 +19,7 @@ export default function ProfilePage() {
       if (!token) return;
 
       try {
-        const res = await fetch('http://localhost:5000/api/users/me', {
+        const res = await fetch(`${API_BASE_URL}/api/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -43,7 +45,7 @@ export default function ProfilePage() {
     if (!token) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${profile.id}/`, {
+      const res = await fetch(`${API_BASE_URL}/api/users/${profile.id}/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -68,7 +70,7 @@ export default function ProfilePage() {
     if (!token) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${profile.id}/`, {
+      const res = await fetch(`${API_BASE_URL}/api/users/${profile.id}/`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

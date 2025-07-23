@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import ShareableCard from './ShareableCard';
 import FocusStreakSkeleton from './FocusStreakSkeleton';
+import { API_BASE_URL } from '@/lib/api';
 
 type Block = {
   date: string;
@@ -79,7 +80,7 @@ const getColor = (day: string, hasData: boolean) => {
           const dateStr = day.toISOString().slice(0, 10);
 
           try {
-            const res = await fetch(`http://localhost:5000/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
+            const res = await fetch(`${API_BASE_URL}/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
               headers: { Authorization: `Bearer ${token}` },
             });
 

@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/lib/track';
+import { API_BASE_URL } from '@/lib/api';
+
 
 
 export default function CycleSelectorPage() {
@@ -18,7 +20,7 @@ export default function CycleSelectorPage() {
     const fetchVibeScore = async () => {
       const token = localStorage.getItem("access_token");
       try {
-        const res = await fetch('http://localhost:5000/api/vibe-score/', {
+        const res = await fetch(`${API_BASE_URL}/api/vibe-score/`, {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
@@ -51,7 +53,7 @@ export default function CycleSelectorPage() {
     trackEvent('start_rhythm', { selectedCycles });
     const token = localStorage.getItem("access_token");
 
-    const res = await fetch('http://localhost:5000/api/users/me', {
+    const res = await fetch(`${API_BASE_URL}/api/users/me`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -59,7 +61,7 @@ export default function CycleSelectorPage() {
 
     const user = await res.json();
 
-    await fetch(`http://localhost:5000/api/users/${user.id}/`, {
+    await fetch(`${API_BASE_URL}/api/users/${user.id}/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
