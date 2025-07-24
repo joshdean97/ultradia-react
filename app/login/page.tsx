@@ -150,7 +150,7 @@ export default function LoginPage() {
         <div className="text-center">
           <p className="text-sm text-gray-500 my-2">or</p>
           <a
-            href="${API_BASE_URL}/api/auth/login/google"
+            href={`${API_BASE_URL}/api/auth/login/google`}
             className="flex items-center justify-center gap-2 w-full bg-white text-gray-800 border border-gray-300 py-2 rounded-md hover:bg-gray-100 transition shadow-sm"
           >
             <svg
