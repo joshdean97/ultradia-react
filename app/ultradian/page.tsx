@@ -10,13 +10,31 @@ import OnboardingModal from '@/components/OnboardingModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import VibeScoreCard from '@/components/VibeScoreCard';
 
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  peak_duration: number;
+  trough_duration: number;
+  grog_duration: number;
+  cycles_count: number;
+}
+
+interface Cycle {
+  cycle: number;
+  peak_start: string;
+  peak_end: string;
+  trough_start: string;
+  trough_end: string;
+}
+
 export default function UltradianPage() {
   const router = useRouter();
-  const [cycles, setCycles] = useState<any[]>([]);
+  const [cycles, setCycles] = useState<Cycle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [wakeTime, setWakeTime] = useState('');
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [currentStage, setCurrentStage] = useState<'grog' | 'peak' | 'trough' | 'complete'>('grog');
   const [vibeScore, setVibeScore] = useState<number | null>(null);
   const [showCycles, setShowCycles] = useState(false);
@@ -42,7 +60,7 @@ export default function UltradianPage() {
 
         const userRes = await fetch(`${API_BASE_URL}/api/users/me`, { headers });
         if (!userRes.ok) throw new Error('Unauthorized');
-        const userData = await userRes.json();
+        const userData: User = await userRes.json();
         console.log('[DEBUG] user:', userData);
         setUser(userData);
 
@@ -52,17 +70,19 @@ export default function UltradianPage() {
         console.log('[DEBUG] vibeData:', vibeData);
         setVibeScore(vibeData.score);
 
-        let wakeTimeStored = sessionStorage.getItem('wake_time');
+        const wakeTimeStored = sessionStorage.getItem('wake_time');
         if (!wakeTimeStored) {
           const recordRes = await fetch(`${API_BASE_URL}/api/records/today?y=${y}&m=${m}&d=${d}`, {
             headers,
           });
           if (!recordRes.ok) return router.push('/log');
           const record = await recordRes.json();
-          wakeTimeStored = record.wake_time ?? '';
-          sessionStorage.setItem('wake_time', wakeTimeStored);
+          const wakeTimeFinal = record.wake_time ?? '';
+          sessionStorage.setItem('wake_time', wakeTimeFinal);
+          setWakeTime(wakeTimeFinal);
+        } else {
+          setWakeTime(wakeTimeStored);
         }
-        setWakeTime(wakeTimeStored);
 
         const ultraRes = await fetch(`${API_BASE_URL}/api/ultradian/?y=${y}&m=${m}&d=${d}`, {
           headers,
@@ -73,9 +93,13 @@ export default function UltradianPage() {
         } else {
           setError(data.message || 'Failed to generate cycles');
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('[ERROR]', err);
-        setError('Something went wrong');
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('Something went wrong');
+        }
       } finally {
         setLoading(false);
       }
@@ -85,8 +109,8 @@ export default function UltradianPage() {
   }, [router]);
 
   const handleCycleComplete = async (
-    start: string,
-    end: string,
+    start: Date,
+    end: Date,
     eventType: 'peak' | 'trough'
   ) => {
     const token = localStorage.getItem('access_token');
@@ -99,7 +123,11 @@ export default function UltradianPage() {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ start_time: start, end_time: end, event_type: eventType }),
+        body: JSON.stringify({
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          event_type: eventType,
+        }),
       });
 
       if (!res.ok) {
@@ -159,7 +187,7 @@ export default function UltradianPage() {
                     transition={{ duration: 0.3 }}
                     className="space-y-4 mt-4 overflow-hidden"
                   >
-                    {cycles.map((cycle: any, i) => (
+                    {cycles.map((cycle: Cycle, i) => (
                       <div key={i} className="p-4 border rounded bg-white shadow-sm">
                         <p className="text-lg font-semibold text-gray-800 mb-1">🌀 Cycle {cycle.cycle}</p>
                         <p className="text-sm text-gray-600">

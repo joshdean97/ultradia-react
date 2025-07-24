@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/api';
 
-
 export default function LogRecordPage() {
   const router = useRouter();
   const [wakeTime, setWakeTime] = useState('');
@@ -14,52 +13,57 @@ export default function LogRecordPage() {
   const [mood, setMood] = useState('');
   const [error, setError] = useState('');
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  const token = localStorage.getItem("access_token");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = localStorage.getItem("access_token");
 
-  try {
-    const todayRes = await fetch(`${API_BASE_URL}/api/records/today`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const body = {
-      wake_time: wakeTime,
-      hrv: parseFloat(hrv),
-      rhr: parseFloat(rhr),
-      sleep_duration: parseFloat(sleep),
-      mood,
-    };
-
-    if (todayRes.ok) {
-      const existing = await todayRes.json();
-      await fetch(`${API_BASE_URL}/api/records/${existing.id}/`, {
-        method: 'PUT',
+    try {
+      const todayRes = await fetch(`${API_BASE_URL}/api/records/today`, {
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(body),
       });
-    } else {
-      await fetch(`${API_BASE_URL}/api/records/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
+
+      const body = {
+        wake_time: wakeTime,
+        hrv: parseFloat(hrv),
+        rhr: parseFloat(rhr),
+        sleep_duration: parseFloat(sleep),
+        mood,
+      };
+
+      if (todayRes.ok) {
+        const existing = await todayRes.json();
+        await fetch(`${API_BASE_URL}/api/records/${existing.id}/`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+      } else {
+        await fetch(`${API_BASE_URL}/api/records/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+      }
+
+      sessionStorage.setItem('wake_time', wakeTime);
+      router.push('/cycles');
+    } catch (err: unknown) {
+      console.error('[ERROR]', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Something went wrong');
+      }
     }
-
-    sessionStorage.setItem('wake_time', wakeTime);
-    router.push('/cycles');
-  } catch (err) {
-    setError('Something went wrong');
-  }
-};
+  };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">

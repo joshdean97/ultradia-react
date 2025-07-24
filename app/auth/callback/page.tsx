@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/api';
 
-
-export default function GoogleCallback() {
+function GoogleCallback() {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -19,14 +18,12 @@ export default function GoogleCallback() {
       localStorage.setItem('user_id', userId || '');
       localStorage.setItem('user_name', name || '');
 
-      // Optional: check if a record exists before routing
       const checkRecord = async () => {
         try {
           const res = await fetch(`${API_BASE_URL}/api/records/today/`, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
-          // ✅ Redirect here
           router.push(res.ok ? '/ultradian' : '/log');
         } catch {
           router.push('/log');
@@ -41,5 +38,13 @@ export default function GoogleCallback() {
     <main className="flex items-center justify-center min-h-screen bg-gray-50">
       <p className="text-gray-500 text-sm">Logging you in via Google...</p>
     </main>
+  );
+}
+
+export default function GoogleCallbackPage() {
+  return (
+    <Suspense fallback={<div className="text-sm text-gray-400">Loading...</div>}>
+      <GoogleCallback />
+    </Suspense>
   );
 }

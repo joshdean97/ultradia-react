@@ -8,11 +8,15 @@ import TableSkeleton from '@/components/TableSkeleton';
 import { trackEvent } from '@/lib/track';
 import { API_BASE_URL } from '@/lib/api';
 
-
+interface RecordEntry {
+  date: string;
+  wake_time: string;
+  hrv: number;
+}
 
 export default function HistoryPage() {
   const router = useRouter();
-  const [records, setRecords] = useState<any[]>([]);
+  const [records, setRecords] = useState<RecordEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -20,52 +24,57 @@ export default function HistoryPage() {
   const recordsPerPage = 5;
 
   useEffect(() => {
-  const fetchRecords = async () => {
-    const token = localStorage.getItem("access_token");
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/records/all`, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    const fetchRecords = async () => {
+      const token = localStorage.getItem('access_token');
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/records/all`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-    const data = await res.json();
-    // ... (no changes to the rest)
-        console.log("Fetched record data:", data);
+        const data = await res.json();
+        console.log('Fetched record data:', data);
 
         const rawRecords = Array.isArray(data)
-  ? data
-  : Array.isArray(data.records)
-    ? data.records
-    : [];
+          ? data
+          : Array.isArray(data.records)
+          ? data.records
+          : [];
 
-if (!Array.isArray(rawRecords)) {
-  console.warn("❌ records is not an array:", rawRecords);
-  setRecords([]);
-  return;
-}
-
+        if (!Array.isArray(rawRecords)) {
+          console.warn('❌ records is not an array:', rawRecords);
+          setRecords([]);
+          return;
+        }
 
         if (rawRecords.length === 0) {
-          console.warn("⚠️ No records returned from /records/");
+          console.warn('⚠️ No records returned from /records/');
         }
 
         const sortedRecords = (rawRecords || []).sort(
-          (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          (a: RecordEntry, b: RecordEntry) =>
+            new Date(b.date).getTime() - new Date(a.date).getTime()
         );
 
         setRecords(sortedRecords);
         trackEvent('view_history', { recordCount: sortedRecords.length });
 
-
         if (sortedRecords.length > 1) {
-          const recent = sortedRecords.slice(1, 8).map((r: any) => r.hrv).filter((h: any) => h != null);
+          const recent = sortedRecords
+            .slice(1, 8)
+            .map((r: RecordEntry) => r.hrv)
+            .filter((h: number | null) => h != null);
           const baseline = recent.reduce((acc, h) => acc + h, 0) / recent.length;
           setBaselineHRV(baseline);
         }
-      } catch (err: any) {
-        setError(err.message || 'Something went wrong');
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError('Something went wrong');
+        }
       } finally {
         setLoading(false);
       }
@@ -74,8 +83,8 @@ if (!Array.isArray(rawRecords)) {
     fetchRecords();
   }, []);
 
-  const goToUltradian = async (record: any) => {
-    const token = localStorage.getItem("access_token");
+  const goToUltradian = async (record: RecordEntry) => {
+    const token = localStorage.getItem('access_token');
     const date = new Date(record.date);
     const y = date.getFullYear();
     const m = date.getMonth() + 1;
@@ -102,8 +111,8 @@ if (!Array.isArray(rawRecords)) {
   const startIndex = (page - 1) * recordsPerPage;
   const currentRecords = records.slice(startIndex, startIndex + recordsPerPage);
 
-  function groupedByMonth(records: any[]) {
-    const groups: Record<string, any[]> = {};
+  function groupedByMonth(records: RecordEntry[]) {
+    const groups: Record<string, RecordEntry[]> = {};
     for (const record of records) {
       const d = new Date(record.date);
       const monthKey = d.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -136,9 +145,7 @@ if (!Array.isArray(rawRecords)) {
         <FocusStreakOverview />
 
         {loading ? (
-           <>
-    <TableSkeleton rows={5} />
-  </>
+          <TableSkeleton rows={5} />
         ) : error ? (
           <p className="text-red-600">{error}</p>
         ) : (
@@ -167,7 +174,7 @@ if (!Array.isArray(rawRecords)) {
                           {month}
                         </td>
                       </tr>
-                      {records.map((r: any, idx: number) => (
+                      {records.map((r: RecordEntry, idx: number) => (
                         <tr
                           key={r.date + idx}
                           className={`border-b border-gray-200 ${

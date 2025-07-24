@@ -73,8 +73,14 @@ export default function LoginPage() {
         trackEvent('login_error', { error: data.error });
       }
     } catch (err) {
+      console.error('[ERROR]', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Something went wrong');
+      }
+      trackEvent('login_error', { error: err?.toString() });
       toast.error('Something went wrong');
-      setError('Something went wrong');
     } finally {
       setIsLoading(false);
     }

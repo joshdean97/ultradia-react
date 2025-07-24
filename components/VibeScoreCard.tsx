@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
-import {API_BASE_URL} from '@/lib/api';
+import { API_BASE_URL } from '@/lib/api';
 
 export default function VibeScoreCard() {
   const [score, setScore] = useState<number | null>(null);
@@ -44,8 +44,12 @@ export default function VibeScoreCard() {
           confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
           setCelebrated(true);
         }
-      } catch (err: any) {
-        setError(err.message || 'Something went wrong');
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message || 'Something went wrong');
+        } else {
+          setError('Something went wrong');
+        }
       } finally {
         setLoading(false);
       }

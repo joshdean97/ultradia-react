@@ -1,6 +1,6 @@
 // components/OnboardingModal.tsx
 'use client';
-import { useEffect, useState } from 'react';
+import {useState } from 'react';
 import { trackEvent } from '@/lib/track';
 
 export default function OnboardingModal({ onClose }: { onClose: () => void }) {

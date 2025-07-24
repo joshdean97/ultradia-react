@@ -111,8 +111,35 @@ export default function UltradianTimer({
     };
 
     createSessionIfNeeded();
-  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount]);
+  }, [wakeTime, peakDuration, troughDuration, grogDuration, cyclesCount, vibeScore]);
+  const logCycleEvent = async (
+    start: Date,
+    end: Date,
+    eventType: 'peak' | 'trough'
+  ) => {
+    const token = localStorage.getItem('access_token');
+    const session = JSON.parse(localStorage.getItem('ultradian_session') || '{}');
+    const recordId = session.user_daily_record_id;
+    if (!token || !recordId) return;
 
+    try {
+      await fetch(`${API_BASE_URL}/api/cycles/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_daily_record_id: recordId,
+          event_type: eventType,
+          start_time: formatTime(start),
+          end_time: formatTime(end),
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to log cycle event', err);
+    }
+  };
   useEffect(() => {
     if (sessionEnded) return;
 
@@ -175,6 +202,7 @@ export default function UltradianTimer({
             );
             if (!logged.includes(i)) {
               const segStartTime = new Date(start.getTime() + segStart * 60000);
+            if (seg.type === 'peak' || seg.type === 'trough') {
               logCycleEvent(segStartTime, now, seg.type);
               trackEvent('cycle_logged', {
                 type: seg.type,
@@ -183,6 +211,7 @@ export default function UltradianTimer({
                 cycle: currentCycle,
               });
               onCycleComplete?.(segStartTime, now, seg.type);
+            }
               const updated = [...logged, i];
               sessionStorage.setItem('logged_segments', JSON.stringify(updated));
             }
@@ -219,7 +248,7 @@ export default function UltradianTimer({
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [sessionEnded, hasSession]);
+  }, [sessionEnded, hasSession, stage, currentCycle, onStageChange, onCycleComplete, vibeScore, logCycleEvent]);
 
   const formatTime = (date: Date) => {
     const hours = String(date.getHours()).padStart(2, '0');
@@ -228,34 +257,7 @@ export default function UltradianTimer({
     return `${hours}:${minutes}:${seconds}`;
   };
 
-  const logCycleEvent = async (
-    start: Date,
-    end: Date,
-    eventType: 'peak' | 'trough'
-  ) => {
-    const token = localStorage.getItem('access_token');
-    const session = JSON.parse(localStorage.getItem('ultradian_session') || '{}');
-    const recordId = session.user_daily_record_id;
-    if (!token || !recordId) return;
 
-    try {
-      await fetch(`${API_BASE_URL}/api/cycles/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_daily_record_id: recordId,
-          event_type: eventType,
-          start_time: formatTime(start),
-          end_time: formatTime(end),
-        }),
-      });
-    } catch (err) {
-      console.error('Failed to log cycle event', err);
-    }
-  };
 
   const endSession = async () => {
     const token = localStorage.getItem('access_token');

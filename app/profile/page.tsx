@@ -6,10 +6,26 @@ import { Pencil } from 'lucide-react';
 import { trackEvent } from '@/lib/track';
 import { API_BASE_URL } from '@/lib/api';
 
-
+interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  peak_duration: number;
+  trough_duration: number;
+  grog_duration: number;
+  cycles_count?: number;
+}
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<any>({});
+  const [profile, setProfile] = useState<UserProfile>({
+    id: 0,
+    name: '',
+    email: '',
+    peak_duration: 0,
+    trough_duration: 0,
+    grog_duration: 0,
+    cycles_count: 0,
+  });
   const [status, setStatus] = useState('');
   const [editInfo, setEditInfo] = useState(false);
 
@@ -37,7 +53,7 @@ export default function ProfilePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setProfile((prev: any) => ({ ...prev, [name]: value }));
+    setProfile((prev: UserProfile) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async () => {
@@ -80,7 +96,6 @@ export default function ProfilePage() {
         localStorage.removeItem("access_token");
         window.location.href = '/login';
         trackEvent('account_deleted');
-
       }
     } catch (err) {
       console.error("Error deleting profile", err);

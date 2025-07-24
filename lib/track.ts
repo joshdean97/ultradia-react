@@ -1,4 +1,4 @@
-export function trackEvent(event: string, meta: Record<string, any> = {}) {
+export function trackEvent(event: string, meta: Record<string, unknown> = {}) {
   const token = localStorage.getItem('access_token');
   const payload = {
     event,

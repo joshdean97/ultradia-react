@@ -11,12 +11,6 @@ type Block = {
   hasData: boolean;
 };
 
-type Props = {
-  streak: number;
-  longest: number;
-  thisWeek: { date: string; count: number }[];
-};
-
 export default function FocusStreakOverview() {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,26 +32,26 @@ export default function FocusStreakOverview() {
     dayGroups[day].push(b.hasData ? 1 : 0);
   });
 
-const weekdayAverages: Record<string, number> = {};
-for (const day in dayGroups) {
-  const values = dayGroups[day];
-  const avg = values.reduce((a, b) => a + b, 0) / values.length;
-  weekdayAverages[day] = Math.ceil(avg);
-}
+  const weekdayAverages: Record<string, number> = {};
+  for (const day in dayGroups) {
+    const values = dayGroups[day];
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    weekdayAverages[day] = Math.ceil(avg);
+  }
   console.log('Weekday averages:', weekdayAverages);
 
-const getColor = (day: string, hasData: boolean) => {
-  const avg = weekdayAverages[day];
+  const getColor = (day: string, hasData: boolean) => {
+    const avg = weekdayAverages[day];
 
-  if (avg === 0 || avg === undefined) return 'bg-gray-300'; // No baseline
+    if (avg === 0 || avg === undefined) return 'bg-gray-300'; // No baseline
 
-  const count = hasData ? 1 : 0;
+    const count = hasData ? 1 : 0;
 
-  if (count > avg) return 'bg-green-400';
-  if (count < avg) return 'bg-yellow-300';
-  return 'bg-blue-400';
-};
-  
+    if (count > avg) return 'bg-green-400';
+    if (count < avg) return 'bg-yellow-300';
+    return 'bg-blue-400';
+  };
+
   useEffect(() => {
     const today = new Date();
     const token = localStorage.getItem('access_token');
@@ -116,8 +110,12 @@ const getColor = (day: string, hasData: boolean) => {
 
         setCurrentStreak(current === 0 ? temp : current);
         setLongestStreak(max);
-      } catch (err: any) {
-        setError(err.message || 'Something went wrong');
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('Something went wrong');
+        }
       } finally {
         setLoading(false);
       }

@@ -3,10 +3,9 @@
 import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '@/lib/api';
 
-
 type AnalyticsEvent = {
   event: string;
-  meta: Record<string, any>;
+  meta: Record<string, unknown>;
   timestamp: string;
   user_id: number;
 };
@@ -28,11 +27,15 @@ export default function AdminAnalyticsPage() {
         const data = await res.json();
         setEvents(data);
       } catch (err) {
-        setError('Could not load analytics events.');
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('An unexpected error occurred');
+        }
       }
     };
 
-    fetchEvents();
+    fetchEvents(); 
   }, []);
 
   return (
